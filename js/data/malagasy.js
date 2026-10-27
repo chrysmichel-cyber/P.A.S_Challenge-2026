@@ -1,0 +1,32 @@
+/* Langue : Malgache. Contenu minimal, rédigé pour ce prototype sans source ni validation linguistique (brouillon). À compléter avec des locuteurs. */
+(function(LCA){
+ const nums=LCA.helpers.nums;
+ LCA.add({id:"malagasy",name:"Malgache",where:"Madagascar",region:"est",geo:{lon:47,lat:-19.5,lab:"l",zone:"Madagascar"},hello:"Salama",code:"MG",
+  words:[["s", "Salama", "Bonjour"],
+   ["s", "Manao ahoana", "Comment allez-vous ?"],
+   ["s", "Misaotra", "Merci"],
+   ["s", "Tonga soa", "Bienvenue"],
+   ["s", "Eny", "Oui"],
+   ["s", "Tsia", "Non"],
+   ["s", "Veloma", "Au revoir"],
+   ["f", "Rano", "Eau", "eau"],
+   ["f", "Vary", "Riz", "riz"],
+   ["f", "Trondro", "Poisson", "poisson"],
+   ["f", "Hena", "Viande", "viande"],
+   ["m", "Reny", "Mère"],
+   ["m", "Ray", "Père"],
+   ["m", "Zaza", "Enfant"],
+   ["m", "Trano", "Maison"],
+   ["n", "Hazo", "Arbre"],
+   ["n", "Masoandro", "Soleil"],
+   ["n", "Orana", "Pluie"],
+   ["s", "Azafady", "S’il vous plaît"],
+   ["s", "Tsara", "Bien"],
+   ["n", "Fotsy", "Blanc"],
+   ["n", "Mainty", "Noir"],
+   ["n", "Mena", "Rouge"],
+   ["n", "Maitso", "Vert"],
+   ["n", "Mavo", "Jaune"],
+   ...nums(["iray", "roa", "telo", "efatra", "dimy", "enina", "fito", "valo", "sivy", "folo"])],tales:[],recipes:[],trad:[],
+  history:["Malgache : Madagascar. Langue austronésienne, apparentée à des langues d’Asie du Sud-Est.", "Cette langue figure sur la carte des langues d’Afrique de plus de 4 millions de locuteurs natifs (2024) fournie pour ce projet. Le vocabulaire proposé est volontairement très limité et doit être relu par un locuteur."]});
+})(window.LCA);

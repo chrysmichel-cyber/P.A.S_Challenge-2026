@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#2a130c">
+<link rel="icon" type="image/png" href="img/favicon.png">
+<link rel="apple-touch-icon" href="img/icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>N’Zassa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;800&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div id="boot" role="status"><div class="bin"><div class="logo"><img src="img/logo-compact.png" alt="N’Zassa : un continent, mille cultures, une aventure." width="304" height="210"></div><div class="bar"><u></u></div><p>Chargement du monde…</p></div></div>
+<div id="stage">
+  <canvas id="c2d" aria-label="Village peint en 2D"></canvas>
+  <canvas id="gl" aria-label="Village virtuel en 3D"></canvas>
+  <div id="nogl" class="ui" hidden><p class="glass" style="padding:14px 18px">Ton appareil n’affiche pas le monde. Les contes, recettes, traditions et leçons restent disponibles dans le menu du bas.</p></div>
+
+  <header id="brand" class="ui glass">
+    <div class="mark"><img src="img/icon-192.png" alt="" width="36" height="36"></div>
+    <h1>N’Zassa <em>Un continent, mille cultures</em></h1>
+    <button id="who" type="button" aria-label="Mon profil" hidden></button>
+  </header>
+
+  <button id="quest" class="ui glass" aria-label="Voir mes quêtes">
+    <span class="qa"><svg viewBox="0 0 24 24" id="qarrow"><path d="M12 2l8 19-8-5-8 5z"/></svg></span>
+    <span class="qt"><small id="qnum"></small><b id="qtitle"></b><i id="qdist"></i><span class="qb"><u id="qbar" style="width:0"></u></span></span>
+  </button>
+
+  <div id="topr" class="ui" style="top:14px;right:var(--gr);display:flex;gap:8px;align-items:flex-start"><button id="menuBtn" class="glass tb" aria-label="Menu principal (M)" title="Menu principal (M)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f7f1e5" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="persoBtn" class="glass tb" aria-label="Mon personnage"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f7f1e5" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></button><button id="pauseBtn" class="glass tb" aria-label="Pause"><svg width="18" height="18" viewBox="0 0 24 24" fill="#f7f1e5"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
+  <div id="langs">
+    <button id="langBtn" class="glass" aria-haspopup="dialog" aria-expanded="false"><span class="dot" id="langDot"></span><span id="langName">Langue</span><small>Carte</small><span aria-hidden="true">🗺</span></button>
+  </div></div>
+
+  <div id="mini" class="ui" role="img" aria-label="Carte du village"><canvas width="248" height="248"></canvas><span class="n">N</span><span class="s">S</span><span class="o">O</span><span class="e">E</span></div>
+
+  <div id="joy" class="ui glass" aria-label="Contrôle de déplacement"><i></i></div>
+  <div id="hint" class="ui glass"><span class="k">ZQSD ou flèches pour marcher · glisse pour tourner la vue · E pour parler · M pour le menu</span><span class="t">Joystick pour marcher · glisse pour tourner la vue</span></div>
+  <button id="act" class="ui" hidden><span id="actTxt"></span><kbd>E</kbd></button>
+
+  <section id="learn" class="ui" hidden role="dialog" aria-modal="true" aria-label="École du village"></section>
+
+  <section id="dialog" class="ui glass" hidden aria-live="polite">
+    <div class="dhead"><div id="dlgAvatar"></div><div><div id="dlgName"></div><div id="dlgRole"></div></div></div>
+    <div style="display:flex;align-items:center;gap:8px;margin:0 0 4px"><p id="dlgWo" style="margin:0"></p><button class="spk" id="dlgSay" aria-label="Écouter"></button></div><p id="dlgFr"></p>
+    <div class="row"><button class="btn" id="dlgGo"></button><button class="btn ghost" id="dlgLater">Plus tard</button></div>
+  </section>
+
+  <aside id="panel" class="ui glass" hidden>
+    <div id="panelTop"><div id="tabs" role="tablist"></div><button id="closeP" aria-label="Fermer">×</button></div>
+    <div id="panelBody"></div>
+  </aside>
+
+  <nav id="dock" class="ui glass" aria-label="Menu principal">
+    <button data-tab="quetes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 5h12l-2 4 2 4H5"/></svg>Quêtes</button>
+    <button data-tab="inventaire" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="6" y="8" width="12" height="13" rx="4"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9 14h6"/></svg>Inventaire</button>
+    <button data-tab="contes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14"/></svg>Contes</button>
+    <button data-tab="recettes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M7 14a4 4 0 1 1 1-7.7A4 4 0 0 1 16 6.3 4 4 0 1 1 17 14v5H7zM7 17h10"/></svg>Recettes</button>
+    <button data-tab="traditions" aria-pressed="false"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="8" rx="8" ry="3"/><path d="M4 8v8c0 1.7 3.6 3 8 3s8-1.3 8-3V8M7 10l3 8M17 10l-3 8"/></svg>Traditions</button>
+    <button data-tab="apprentissage" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/></svg>Apprendre</button>
+  </nav>
+  <div id="toast" class="ui glass" hidden></div>
+
+  <div id="pause" class="ui" hidden style="inset:0;z-index:35;display:grid;place-items:center;padding:16px;background:rgba(6,16,32,.6)"><div class="glass" style="width:min(360px,100%);padding:20px"><h2 style="margin:0 0 4px;font:800 26px var(--display)">Pause</h2><p class="sub" style="margin:0 0 14px">Ta progression est enregistrée dans ce navigateur.</p><div class="lcards" style="gap:8px"><button class="btn warm" id="pResume" style="flex:none">Reprendre</button><button class="btn" id="pPerso" style="flex:none">Mon personnage</button><button class="btn" id="pLang" style="flex:none">Changer de langue</button><button class="btn ghost" id="pMenu" style="flex:none">Menu principal</button></div><p class="sub" style="margin:14px 0 0;font-size:12px">ZQSD / WASD : marcher · Maj : courir · Espace : sauter · E : parler · M : menu · P : pause</p></div></div>
+  <section id="mapov" class="ui" hidden role="dialog" aria-label="Carte de l’Afrique"><div class="mapcard glass"><div class="maphead"><h2>Carte de l’Afrique</h2><button id="mapClose" aria-label="Fermer la carte">×</button></div><div id="mapBody"></div></div></section>
+  <div id="fade" class="ui" style="inset:0;background:#0b1a33;opacity:0;pointer-events:none;z-index:60"></div>
+  <div id="welcome" class="ui"><div class="card glass" id="welcomeCard"></div></div>
+</div>
+<script src="vendor/three.min.js"></script>
+<script src="js/data/common.js"></script>
+<script src="js/data/wolof.js"></script>
+<script src="js/data/dioula.js"></script>
+<script src="js/data/bambara.js"></script>
+<script src="js/data/lingala.js"></script>
+<script src="js/data/swahili.js"></script>
+<script src="js/data/zoulou.js"></script>
+<script src="js/data/xhosa.js"></script>
+<script src="js/data/shona.js"></script>
+<script src="js/data/somali.js"></script>
+<script src="js/data/amharique.js"></script>
+<script src="js/data/kikongo.js"></script>
+<script src="js/data/sango.js"></script>
+<script src="js/data/tamazight.js"></script>
+<script src="js/data/copte.js"></script>
+<script src="js/data/nubien.js"></script>
+<script src="js/data/yoruba.js"></script>
+<script src="js/data/igbo.js"></script>
+<script src="js/data/ibibio.js"></script>
+<script src="js/data/tiv.js"></script>
+<script src="js/data/hausa.js"></script>
+<script src="js/data/kanuri.js"></script>
+<script src="js/data/fula.js"></script>
+<script src="js/data/songhay.js"></script>
+<script src="js/data/moore.js"></script>
+<script src="js/data/akan.js"></script>
+<script src="js/data/baoule.js"></script>
+<script src="js/data/ewe.js"></script>
+<script src="js/data/arabe.js"></script>
+<script src="js/data/kabyle.js"></script>
+<script src="js/data/shilha.js"></script>
+<script src="js/data/tigrinya.js"></script>
+<script src="js/data/oromo.js"></script>
+<script src="js/data/sidamo.js"></script>
+<script src="js/data/dinka.js"></script>
+<script src="js/data/nuer.js"></script>
+<script src="js/data/kamba.js"></script>
+<script src="js/data/kikuyu.js"></script>
+<script src="js/data/luhya.js"></script>
+<script src="js/data/kalenjin.js"></script>
+<script src="js/data/luo.js"></script>
+<script src="js/data/luganda.js"></script>
+<script src="js/data/kinyarwanda.js"></script>
+<script src="js/data/kirundi.js"></script>
+<script src="js/data/sukuma.js"></script>
+<script src="js/data/malagasy.js"></script>
+<script src="js/data/nande.js"></script>
+<script src="js/data/kituba.js"></script>
+<script src="js/data/tshiluba.js"></script>
+<script src="js/data/umbundu.js"></script>
+<script src="js/data/makhuwa.js"></script>
+<script src="js/data/chewa.js"></script>
+<script src="js/data/bemba.js"></script>
+<script src="js/data/tsonga.js"></script>
+<script src="js/data/tswana.js"></script>
+<script src="js/data/sotho.js"></script>
+<script src="js/data/swazi.js"></script>
+<script src="js/data/ndebele.js"></script>
+<script src="js/data/afrikaans.js"></script>
+<script src="js/data/regions.js"></script>
+<script src="js/data/map-africa.js"></script>
+<script src="js/map/layout.js"></script>
+<script src="js/learn/progression.js"></script>
+<script src="js/learn/storage.js"></script>
+<script src="js/account/accounts.js"></script>
+<script src="js/oral/oral.js"></script>
+<script src="js/review/review.js"></script>
+<script src="js/learn/quiz.js"></script>
+<script src="js/data/quiz/curriculum.js"></script>
+<script src="js/data/quiz/bank.js"></script>
+<script src="js/learn/ui.js"></script>
+<script src="js/art2d.js"></script>
+<script src="js/world2d.js"></script>
+<script src="js/online/config.js"></script>
+<script src="js/online/client.js"></script>
+<script src="js/perf/quality.js"></script>
+<script src="js/anim/motion.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
