@@ -4,10 +4,12 @@
    Sécurité mise en œuvre : mots de passe hachés (scrypt + sel), jetons signés HMAC-SHA256 avec expiration, limitation de débit,
    limites de taille, validation stricte, consentement explicite, suppression et export des données, statut de modération (aucun récit public sans validation). */
 'use strict';
+const {createWorld,WorldError}=require('./world.cjs');
 const http=require('http'),crypto=require('crypto'),fs=require('fs'),path=require('path');
 const MAX_BODY=6*1024*1024,TOKEN_TTL=7*24*3600,NAME_RE=/^[\p{L}\p{N}][\p{L}\p{N} '’_-]{1,23}$/u;
 function createServer(opts){
  opts=opts||{};const secret=opts.secret||process.env.NZASSA_SECRET||crypto.randomBytes(32).toString('hex'),file=opts.file||null,rate=opts.rate||{max:60,windowMs:60000},now=opts.now||(()=>Date.now());
+ const world=createWorld({now});
  let db={users:{},stories:{},reports:[]};if(file&&fs.existsSync(file)){try{db=JSON.parse(fs.readFileSync(file,'utf8'))}catch(e){}}
  const persist=()=>{if(file)fs.writeFileSync(file,JSON.stringify(db))};
  const b64=b=>Buffer.from(b).toString('base64url');
@@ -18,7 +20,9 @@ function createServer(opts){
   return p&&p.exp>now()/1000?p:null}
  const hash=(pw,salt)=>crypto.scryptSync(pw,salt,64,{N:16384,r:8,p:1}).toString('hex');
  const hits=new Map();
- function limited(ip,path){const k=ip+'|'+(path.startsWith('/v1/auth')?'auth':'api'),max=path.startsWith('/v1/auth')?(rate.authMax||Math.min(rate.max,10)):rate.max,t=now();let h=hits.get(k);if(!h||t-h.t>rate.windowMs){h={t,n:0};hits.set(k,h)}h.n++;return h.n>max}
+ function limited(ip,path){const kind=path.startsWith('/v1/auth')?'auth':path==='/v1/world/sync'?'sync':path==='/v1/world/join'?'join':'api',
+  max=kind==='auth'?(rate.authMax||Math.min(rate.max,10)):kind==='sync'?(rate.syncMax||900):kind==='join'?(rate.joinMax||30):rate.max,k=ip+'|'+kind,t=now();
+  let h=hits.get(k);if(!h||t-h.t>rate.windowMs){h={t,n:0};hits.set(k,h)}h.n++;return h.n>max}
  const send=(res,code,obj)=>{const b=JSON.stringify(obj);res.writeHead(code,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','access-control-allow-origin':opts.cors||'null','access-control-allow-headers':'content-type, authorization','access-control-allow-methods':'GET,POST,DELETE,OPTIONS'});res.end(b)};
  const err=(res,code,msg,c)=>send(res,code,{error:msg,code:c||'error'});
  const clean=(s,n)=>String(s==null?'':s).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'').slice(0,n);
@@ -66,10 +70,19 @@ function createServer(opts){
    if(sm){const s=db.stories[sm[1]];
     if(sm[2]&&req.method==='POST'){if(!need())return;if(!s)return err(res,404,'Introuvable','not_found');db.reports.push({story:s.id,by:user.id,reason:clean(body.reason,300),at:now()});if(s.status==='approved')s.status='pending';persist();return send(res,202,{reported:true})}
     if(req.method==='DELETE'){if(!need())return;if(!s||s.owner!==user.id)return err(res,404,'Introuvable','not_found');delete db.stories[s.id];persist();return send(res,200,{deleted:true})}}
+   if(p.startsWith('/v1/world/')){
+    try{
+     if(p==='/v1/world/join'&&req.method==='POST')return send(res,200,world.join(body));
+     const sid=((/^Bearer (.+)$/.exec(req.headers.authorization||''))||[])[1]||'';
+     if(p==='/v1/world/sync'&&req.method==='POST')return send(res,200,world.sync(sid,body));
+     if(p==='/v1/world/report'&&req.method==='POST')return send(res,202,world.report(sid,body));
+     if(p==='/v1/world/leave'&&req.method==='POST')return send(res,200,world.leave(sid));
+    }catch(e){if(e instanceof WorldError)return err(res,e.status,e.message,e.code);throw e}
+    return err(res,404,'Route inconnue','not_found')}
    if((p==='/v1/transcribe'||p==='/v1/translate')&&req.method==='POST'){if(!need())return;
     return err(res,501,'Aucun fournisseur de '+(p.endsWith('transcribe')?'transcription':'traduction')+' n’est configuré. Le jeu n’invente pas de résultat : saisis le texte à la main.','no_provider')}
    return err(res,404,'Route inconnue','not_found')
   }catch(e){err(res,e.status||500,e.status?e.message:'Erreur serveur')}});
- server.db=db;return server}
+ server.db=db;server.world=world;return server}
 module.exports={createServer};
-if(require.main===module){const port=+process.env.PORT||8787,s=createServer({file:process.env.NZASSA_DB||path.join(__dirname,'data.json')});s.listen(port,process.env.HOST||'127.0.0.1',()=>console.log('N’Zassa API de référence sur http://127.0.0.1:'+port))}
+if(require.main===module){const port=+process.env.PORT||8787,s=createServer({cors:process.env.NZASSA_CORS,file:process.env.NZASSA_DB||path.join(__dirname,'data.json')});s.listen(port,process.env.HOST||'127.0.0.1',()=>console.log('N’Zassa API de référence sur http://127.0.0.1:'+port))}

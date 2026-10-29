@@ -11,7 +11,12 @@
    let j=null;try{j=await r.json()}catch(e){}
    if(!r.ok)throw Object.assign(new Error((j&&j.error)||('HTTP '+r.status)),{code:(j&&j.code)||'http',status:r.status});
    return j}
+  let sess=null;
+  async function wcall(path,body){if(!enabled())throw Object.assign(new Error('Services en ligne non configurés'),{code:'offline'});
+   const h={'content-type':'application/json'};if(sess)h.authorization='Bearer '+sess;const r=await fx(base+path,{method:'POST',headers:h,body:JSON.stringify(body||{})});let j=null;try{j=await r.json()}catch(e){}
+   if(!r.ok)throw Object.assign(new Error((j&&j.error)||('HTTP '+r.status)),{code:(j&&j.code)||'http',status:r.status});return j}
   return {
+   world:{join:b=>wcall('/v1/world/join',b),sync:b=>wcall('/v1/world/sync',b),report:id=>wcall('/v1/world/report',{id}),leave:()=>wcall('/v1/world/leave',{}),setSession:t=>{sess=t}},
    enabled,setToken:t=>{token=t},getToken:()=>token,
    auth:{
     register:async(name,password,consent)=>{const j=await call('POST','/v1/auth/register',{name,password,consent:!!consent},false);token=j.token;return j},

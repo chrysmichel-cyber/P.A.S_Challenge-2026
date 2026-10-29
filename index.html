@@ -34,14 +34,16 @@
     <span class="qt"><small id="qnum"></small><b id="qtitle"></b><i id="qdist"></i><span class="qb"><u id="qbar" style="width:0"></u></span></span>
   </button>
 
-  <div id="topr" class="ui" style="top:14px;right:var(--gr);display:flex;gap:8px;align-items:flex-start"><button id="menuBtn" class="glass tb" aria-label="Menu principal (M)" title="Menu principal (M)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f7f1e5" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="persoBtn" class="glass tb" aria-label="Mon personnage"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f7f1e5" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></button><button id="pauseBtn" class="glass tb" aria-label="Pause"><svg width="18" height="18" viewBox="0 0 24 24" fill="#f7f1e5"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
+  <div id="topr" class="ui" style="top:14px;right:var(--gr);display:flex;gap:8px;align-items:flex-start"><button id="chatBtn" class="glass tb" hidden aria-label="Discussion du village" title="Discussion (T)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f7f1e5" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.5 7.2L4 20.5l1.4-4.6A8 8 0 1 1 21 12z"/></svg><i id="chatBadge" hidden></i></button><button id="menuBtn" class="glass tb" aria-label="Menu principal (M)" title="Menu principal (M)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f7f1e5" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button><button id="persoBtn" class="glass tb" aria-label="Mon personnage"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f7f1e5" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-5 4-7 8-7s7 2 8 7"/></svg></button><button id="pauseBtn" class="glass tb" aria-label="Pause"><svg width="18" height="18" viewBox="0 0 24 24" fill="#f7f1e5"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg></button>
   <div id="langs">
     <button id="langBtn" class="glass" aria-haspopup="dialog" aria-expanded="false"><span class="dot" id="langDot"></span><span id="langName">Langue</span><small>Carte</small><span aria-hidden="true">🗺</span></button>
   </div></div>
 
   <div id="mini" class="ui" role="img" aria-label="Carte du village"><canvas width="248" height="248"></canvas><span class="n">N</span><span class="s">S</span><span class="o">O</span><span class="e">E</span></div>
 
+  <aside id="chat" class="ui glass" hidden aria-label="Discussion du village"><header><b id="chatT">Monde ouvert</b><button id="chatX" type="button" aria-label="Fermer la discussion">×</button></header><details id="chatPlD"><summary id="chatPlS">Joueurs</summary><div id="chatPl"></div></details><div id="chatLog" role="log" aria-live="polite"></div><p id="chatSt" class="chatst" hidden></p><form id="chatF" autocomplete="off"><input id="chatIn" maxlength="200" enterkeyhint="send" placeholder="Écrire un message (texte seulement)…" aria-label="Message"><button class="btn warm sm" type="submit">Envoyer</button></form></aside>
   <div id="joy" class="ui glass" aria-label="Contrôle de déplacement"><i></i></div>
+  <div id="joyc" class="ui glass" aria-label="Contrôle de la caméra"><i></i></div>
   <div id="hint" class="ui glass"><span class="k">ZQSD ou flèches pour marcher · glisse pour tourner la vue · E pour parler · M pour le menu</span><span class="t">Joystick pour marcher · glisse pour tourner la vue</span></div>
   <button id="act" class="ui" hidden><span id="actTxt"></span><kbd>E</kbd></button>
 
@@ -147,8 +149,10 @@
 <script src="js/learn/ui.js"></script>
 <script src="js/art2d.js"></script>
 <script src="js/world2d.js"></script>
+<div id="fsGate" hidden role="dialog" aria-modal="true" aria-labelledby="fsT"><div class="fsc"><h2 id="fsT">Jouer en plein écran</h2><p id="fsP">N’Zassa se joue en plein écran sur téléphone et tablette, pour que les commandes et le décor restent visibles. Passe ton téléphone en mode paysage si tu peux.</p><button id="fsGo" class="btn warm" type="button">Passer en plein écran</button><button id="fsSkip" class="btn ghost" type="button" hidden>Continuer quand même</button></div></div>
 <script src="js/online/config.js"></script>
 <script src="js/online/client.js"></script>
+<script src="js/online/world.js"></script>
 <script src="js/perf/quality.js"></script>
 <script src="js/anim/motion.js"></script>
 <script src="js/main.js"></script>

@@ -12,6 +12,7 @@ const ok=(c,m)=>{n++;if(c)console.log('  ok   '+m);else{fail++;console.log('  FA
 async function open(opts={}){
  const ctx=await browser.newContext(Object.assign({viewport:{width:1000,height:640}},opts.ctx||{}));
  if(opts.mode!==null&&!(opts.init&&opts.mode===undefined))await ctx.addInitScript(m=>{if(!localStorage.getItem('lca-v2')||!JSON.parse(localStorage.getItem('lca-v2')).settings||!JSON.parse(localStorage.getItem('lca-v2')).settings.__set){const s=JSON.parse(localStorage.getItem('lca-v2')||'{}');s.settings=Object.assign({sound:1,shadows:0,quality:0,__set:1},s.settings,{mode:m,modeV:2});localStorage.setItem('lca-v2',JSON.stringify(s))}},opts.mode||'2d');
+ if(!opts.gate)await ctx.addInitScript(()=>{window.LCA_NO_FSGATE=true});
  if(opts.init)await ctx.addInitScript(opts.init);
  const pg=await ctx.newPage();pg.setDefaultTimeout(15000);
  pg.on('pageerror',e=>errors.push(String(e)));pg.on('console',m=>{if(m.type()==='error'&&!/ERR_FAILED|fonts/.test(m.text()))errors.push(m.text())});
@@ -341,6 +342,38 @@ console.log('\n== 3D : animations course/saut et qualité adaptative ==');
  ok(await pg.evaluate(()=>__lca.R.treeList.some(c=>!c.visible)),'3D : les arbres lointains sont masqués quand la qualité est basse');
  await jsClick(pg,'[data-m=settings]').catch(()=>{});
  await ctx.close()}
+
+console.log('\n== Monde ouvert : deux joueurs, chat texte, avatars distants ==');
+{const {createServer}=createRequire(import.meta.url)('../server/server.cjs');
+ const api=createServer({secret:'e2e',cors:'*',rate:{max:2000,syncMax:20000,joinMax:200,windowMs:60000}});await new Promise(r=>api.listen(0,'127.0.0.1',r));const API='http://127.0.0.1:'+api.address().port;
+ const seed=(name,mode)=>({init:`(()=>{try{if(!localStorage.getItem('lca-v2'))localStorage.setItem('lca-v2',JSON.stringify({v:5,name:${JSON.stringify(name)},settings:{mode:${JSON.stringify(mode)},modeV:2,sound:0,play:'online',api:${JSON.stringify(API)},onlineConsent:true}}))}catch(e){}})()`});
+ const A=await open(seed('Awa','2d')),B=await open(seed('Bo','3d'));await B.pg.waitForTimeout(3500);
+ await enter(A.pg);await enter(B.pg);await A.pg.waitForTimeout(2500);
+ ok(await A.pg.evaluate(()=>__lca.onl.active)&&await B.pg.evaluate(()=>__lca.onl.active),'les deux joueurs sont connectés au village');
+ ok(await A.pg.evaluate(()=>!document.getElementById('chatBtn').hidden),'le bouton de discussion apparaît en monde ouvert');
+ ok(await A.pg.evaluate(()=>__lca.onl.players.length)===1&&(await A.pg.evaluate(()=>__lca.onl.players[0].name))==='Bo','2D : Awa voit Bo');
+ ok(await B.pg.evaluate(()=>__lca.onl.players.length)===1,'3D : Bo voit Awa');
+ await B.pg.evaluate(()=>{__lca.P.x=12;__lca.P.z=10});await A.pg.waitForTimeout(2200);
+ ok(await A.pg.evaluate(()=>{const q=__lca.onl.players[0];return Math.abs(q.tx-12)<1}),'la position de Bo est transmise à Awa');
+ ok(await B.pg.evaluate(()=>__lca.R.scene.children.length)>0,'3D : scène active avec joueur distant');
+ await jsClick(A.pg,'#chatBtn');await A.pg.waitForTimeout(300);
+ await A.pg.fill('#chatIn','Bonjour depuis 2D https://evil.example/x');await A.pg.press('#chatIn','Enter');await A.pg.waitForTimeout(2200);
+ ok((await B.pg.evaluate(()=>document.getElementById('chatBadge').textContent))==='1','badge de message non lu chez Bo');
+ await jsClick(B.pg,'#chatBtn');await B.pg.waitForTimeout(300);
+ const log=await B.pg.innerText('#chatLog');
+ ok(log.includes('Awa : Bonjour depuis 2D')&&!log.includes('evil.example'),'message reçu, lien neutralisé');
+ await B.pg.fill('#chatIn','Salut Awa !');await B.pg.press('#chatIn','Enter');await A.pg.waitForTimeout(2200);
+ ok((await A.pg.innerText('#chatLog')).includes('Bo : Salut Awa !'),'réponse reçue dans l’autre sens');
+ await jsClick(B.pg,'[data-cm]');await B.pg.waitForTimeout(200);
+ ok(await B.pg.evaluate(()=>__lca.onl&&document.querySelector('[data-cm]').textContent)==='Afficher','le joueur peut être masqué');
+ await jsClick(A.pg,'[data-m=settings]').catch(()=>{});
+ await A.pg.evaluate(()=>document.getElementById('menuBtn').click());await A.pg.waitForTimeout(1500);
+ ok(!(await A.pg.evaluate(()=>__lca.onl.active)),'ouvrir le menu quitte le village en ligne');
+ await B.pg.waitForTimeout(2200);ok(await B.pg.evaluate(()=>__lca.onl.players.length)===0,'le départ est visible chez Bo');
+ await A.ctx.close();await B.ctx.close();api.close()}
+{const {ctx,pg}=await open();await jsClick(pg,'[data-play=online]');await pg.waitForTimeout(300);
+ ok((await pg.innerText('.playcard')).includes('Aucun serveur configuré'),'monde ouvert sans serveur : message clair, jeu solo intact');
+ await jsClick(pg,'[data-play=solo]');ok((await pg.innerText('.playcard')).includes('rien n’est envoyé'),'mode Solo : aucune donnée envoyée');await ctx.close()}
 
 ok(errors.length===0,'aucune erreur JavaScript dans la console'+(errors.length?' : '+errors.slice(0,3).join(' | '):''));
 await browser.close();srv.close();

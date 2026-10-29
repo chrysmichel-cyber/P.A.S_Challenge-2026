@@ -272,6 +272,7 @@ function createRenderer(canvas){
   if(dyn.chick){const v=vis(dyn.chick.x,dyn.chick.z,1);if(v)L.push({dd:v.dd,k:3,v})}
   f.npcs.forEach(n=>{const v=vis(n.x,n.z,2);if(v)L.push({dd:v.dd,k:4,n,v})});
   {const v=vis(P.x,P.z,2);if(v)L.push({dd:v.dd-.01,k:5,v})}
+  (f.remote||[]).forEach(q=>{const v=vis(q.x,q.z,2);if(v)L.push({dd:v.dd,k:11,q,v})});
   picks.forEach(p=>{if(p.got)return;const v=vis(p.x,p.z,2);if(v)L.push({dd:v.dd,k:6,p,v})});
   dyn.perch.forEach(b=>{if(b.hide)return;const v=vis(b.x,b.z,1);if(v)L.push({dd:v.dd,k:7,b,v})});
   [[-20,-64.5],[22,-66]].forEach((b,i)=>{const v=vis(b[0],b[1],5);if(v)L.push({dd:v.dd,k:8,i,b,v})});
@@ -312,6 +313,9 @@ function createRenderer(canvas){
     const fk=dyn.fireK,fl=(1+Math.sin(t*14)*.1+Math.sin(t*23)*.06)*fk;[['#ff8a1c',.55,1.15],['#ffb83a',.4,.85],['#fff0a0',.22,.55]].forEach(q=>{ctx.fillStyle=q[0];ctx.beginPath();ctx.moveTo(-q[1]*s,-.2*s);ctx.quadraticCurveTo(-q[1]*.9*s,-q[2]*s*fl*.7,Math.sin(t*9)*.08*s,-q[2]*s*fl*1.3);ctx.quadraticCurveTo(q[1]*.9*s,-q[2]*s*fl*.7,q[1]*s,-.2*s);ctx.closePath();ctx.fill()});
     ctx.restore();
     hits.push({root:inter.find(i=>i.id==='fire'),x0:v.sx-v.sc*.9,x1:v.sx+v.sc*.9,y0:v.sy-v.sc*1.8,y1:v.sy,dd:v.dd})}
+   else if(it.k===11){const q=it.q,fx=Math.sin(q.h),fz=Math.cos(q.h),fc=Math.abs(fx)>Math.abs(fz)?'s':(fz>0?'f':'b');
+    A.drawPerson(ctx,q.o,v.sx,v.sy,v.sc,fc,q.ph,q.moving?1:.05,t,fx<0);
+    if(v.dd<110){const lb=label(q.name),lw=clamp(v.sc*1.8,56,104),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-v.sc*2.12-lh,lw,lh)}}
    else if(it.k===10){drawBunting(t)}}
   if(htag)ctx.drawImage(htag[0],htag[1],htag[2],htag[3],htag[4]);/* le nom reste visible devant le décor */
   /* éléments interactifs sans sprite dédié : puits, mortier, champ */

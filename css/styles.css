@@ -464,3 +464,52 @@ body.learn-open #joy,body.learn-open #act{display:none!important}
 .rvsum{margin:8px 0}.rvsum small{opacity:.8}
 .amap .mreg{paint-order:stroke;stroke:#f3dfae;stroke-width:2.5px;stroke-linejoin:round}
 .stylenote{font-size:.8rem;line-height:1.35;margin:8px 0;padding:8px 10px;border-left:3px solid #f2c14e;background:rgba(242,193,78,.1);border-radius:6px}
+
+/* ===== Mobile : joystick caméra, plein écran, ajustements d'affichage ===== */
+#joyc{right:var(--gr);bottom:calc(var(--gb) + 86px);width:96px;height:96px;border-radius:50%;touch-action:none;display:none;opacity:.9}
+#joyc i{position:absolute;left:50%;top:50%;width:42px;height:42px;margin:-21px 0 0 -21px;border-radius:50%;background:rgba(255,222,160,.88);box-shadow:0 2px 10px rgba(0,0,0,.4)}
+#joyc::after{content:"caméra";position:absolute;left:0;right:0;bottom:-16px;text-align:center;font:600 10px var(--body);color:#fff;text-shadow:0 1px 3px #000}
+@media (pointer:coarse){body.m3d #joyc{display:block}body.learn-open #joyc{display:none!important}}
+#stage.menu #joyc,#stage.menu #joy{display:none!important}
+#fsGate{position:fixed;inset:0;z-index:200;display:grid;place-items:center;padding:20px;background:rgba(26,12,7,.94);color:#fff}
+#fsGate[hidden]{display:none}
+#fsGate .fsc{max-width:420px;text-align:center;display:grid;gap:14px}
+#fsGate h2{font:800 24px var(--display)}
+#fsGate p{color:#e8d8c0;line-height:1.45}
+@media (max-width:430px){
+ #brand #who{display:none}
+ #dock button{font-size:9.5px;letter-spacing:-.01em}
+ #dock{padding:4px;gap:0}
+}
+@media (max-height:480px){
+ #act{right:calc(var(--gr) + 112px)}
+ #joyc{bottom:calc(var(--gb) + 58px);width:88px;height:88px}
+ .amap svg{max-height:66vh}
+ #welcome .card h2{font-size:22px}
+}
+#pause>.glass{max-height:calc(100dvh - 24px);overflow:auto}
+@media (max-height:480px){#pause>.glass{padding:12px!important;width:min(560px,100%)!important}#pause .btn,#pause button{min-height:40px}}
+
+/* ===== Monde ouvert : chat texte ===== */
+#chatBtn{position:relative}
+#chatBtn i{position:absolute;top:5px;right:5px;min-width:16px;height:16px;border-radius:8px;background:var(--accent);color:var(--accent-ink);font:800 10px/16px var(--body);text-align:center;padding:0 4px}
+#chat{left:var(--gx);right:var(--gr);top:66px;width:auto;max-width:420px;max-height:min(58dvh,420px);display:flex;flex-direction:column;gap:6px;padding:10px;z-index:9}
+#chat[hidden]{display:none}
+#chat header{display:flex;align-items:center;justify-content:space-between;font-size:14px}
+#chat header button{width:34px;height:34px;border:0;border-radius:50%;background:rgba(255,255,255,.1);color:#fff;font-size:20px;line-height:1}
+#chat summary{font-size:12px;color:var(--muted);cursor:pointer}
+#chatPl{display:grid;gap:4px;max-height:110px;overflow:auto;margin-top:4px}
+#chatPl div{display:flex;align-items:center;gap:6px;font-size:13px}#chatPl b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#chatPl button{border:1px solid var(--line);background:transparent;color:#fff;border-radius:8px;padding:3px 8px;font-size:11px;min-height:28px}
+#chatLog{flex:1;overflow:auto;min-height:90px;display:flex;flex-direction:column;gap:4px;font-size:14px;overscroll-behavior:contain;-webkit-user-select:text;user-select:text}
+#chatLog p{margin:0;word-break:break-word}#chatLog .sys{color:var(--muted);font-style:italic;font-size:12.5px}#chatLog .err{color:#ffb4a0;font-size:12.5px}#chatLog .me b{color:var(--accent)}
+.chatst{margin:0;font-size:12px;color:#ffd27a}
+#chatF{display:flex;gap:6px}#chatF input{flex:1;min-width:0;min-height:42px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:#fff;padding:0 12px;font-size:16px}
+@media (max-height:480px){#chat{top:8px;left:var(--gx);right:auto;width:min(380px,50vw);max-height:calc(100dvh - 16px)}#chatLog{min-height:50px}}
+.playcard{margin:10px 0;padding:12px;border:1px solid var(--line);border-radius:16px;background:rgba(255,255,255,.04);display:grid;gap:8px}
+.playcard .seg button{min-height:44px}
+.playcard small,.playcard .sub{font-size:12.5px;color:var(--muted);line-height:1.4}
+.playcard input[type=text],.playcard input[type=url]{min-height:44px;border-radius:12px;border:1px solid var(--line);background:rgba(0,0,0,.3);color:#fff;padding:0 12px;font-size:16px;width:100%}
+.playcard label{display:flex;gap:8px;align-items:flex-start;font-size:13px}
+.playcard .pmsg{font-size:12.5px;color:#ffd27a;min-height:1em}
+@media (max-width:430px){#brand{display:none}}

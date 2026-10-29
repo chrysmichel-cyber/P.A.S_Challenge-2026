@@ -148,6 +148,10 @@ Le code est du JavaScript sans bundler (scripts classiques, espace `window.LCA`)
 - **Quiz niveaux 3 et 4** : voir `docs/APPRENTISSAGE.md`. **Relecture** : `docs/VALIDATION.md`.
 - **En ligne** : client + serveur de référence testés, non déployés, sans interface : `docs/EN_LIGNE.md`.
 
+## 7 ter. Nouveautés v0.14
+- **Mobile** : plein écran demandé sur tactile, joystick caméra (3D), corrections d'affichage portrait/paysage.
+- **Monde ouvert** : mode Solo ou rencontre d'autres joueurs avec chat écrit (serveur à héberger à part) : `docs/MONDE_OUVERT.md`.
+
 ## 8. Ressources externes et licences
 
 three.js r128 (licence MIT, inclus dans `vendor/`). Polices Bricolage Grotesque et Figtree via Google Fonts (repli système hors ligne). Aucun modèle 3D, texture, image ni son externe en dehors du logo et des visuels du projet : décors et personnages sont générés par le code.

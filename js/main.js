@@ -346,7 +346,7 @@ const renderLangMenu=()=>{const L=lang();$('#langName').textContent=L.name;$('#l
 function flashFade(){const f=$('#fade');if(!f)return;f.style.transition='none';f.style.opacity='1';void f.offsetWidth;f.style.transition='opacity .7s ease';f.style.opacity='0'}
 function setLang(id,announce){
  closeDialog();closePanel();state.lang=id;D();save();quiz=null;taleIdx=0;recIdx=0;learnMode='cartes';
- renderLangMenu();if(R&&R.applyLang)R.applyLang();check();renderTracker();flashFade();
+ renderLangMenu();if(R&&R.applyLang)R.applyLang();check();renderTracker();flashFade();if(typeof ONL!=='undefined')ONL.sync();
  if(announce)toast('Langue : '+lang().name+(lang().hello?'. '+lang().hello+' !':''));
 }
 
@@ -452,7 +452,7 @@ function applySettings(){
  R.scene.traverse(o=>{if(o.material){(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>{m.needsUpdate=true})}});
  window.dispatchEvent(new Event('resize'))}
 function enterGame(id,panelTab){
- setLang(id,false);state.started=1;save();welcomeOpen=false;$('#stage').classList.remove('menu');$('#welcome').hidden=true;renderTracker();
+ setLang(id,false);state.started=1;save();welcomeOpen=false;$('#stage').classList.remove('menu');$('#welcome').hidden=true;renderTracker();ONL.sync();
  if(panelTab)openPanel(panelTab);else if(!state.avatar&&menuMode==='new'){openPanel('perso');if(!heroName())setTimeout(()=>{const i=$('#heroName');if(i)i.focus()},60)}
  else{const q=curQuest();toast((heroName()?'Bienvenue, '+heroName()+' ! ':'')+(q?'Quête en cours : '+q.t:'')) }}
 const back=(to,label)=>'<button class="back" data-m="'+to+'">← '+(label||'Retour')+'</button>';
@@ -713,7 +713,7 @@ function menuHtml(){
   const cont=!!state.started||anyProgress()||!!state.avatar;
   const nL=Object.keys(LANGS).length;
   return '<div class="hero"><div class="hbanner"><img src="img/hero.jpg" alt="N’Zassa : un continent, mille cultures, une aventure." width="1312" height="410"></div><h2 class="brandname vh">N’Zassa</h2>'+idRow()+
-   '<p class="pitch">Parcours des villages d’Afrique, rencontre leurs habitants et apprends '+nL+' langues par les contes, la cuisine et la musique.</p></div>'+accCard()+'<div class="mlist">'+
+   '<p class="pitch">Parcours des villages d’Afrique, rencontre leurs habitants et apprends '+nL+' langues par les contes, la cuisine et la musique.</p></div>'+accCard()+ONL.card()+'<div class="mlist">'+
    '<button class="mbtn big" data-m="new"><b>Nouvelle aventure</b><small>Choisir un peuple sur la carte et créer ton personnage</small></button>'+
    '<button class="mbtn" data-m="oral"><b>Patrimoine oral</b><small>Enregistrer, transcrire, traduire et réécouter un récit</small></button><button class="mbtn" data-m="continue"'+(cont?'':' disabled')+'><b>Continuer</b><small>'+(cont?'Reprendre en '+esc(lang().name):'Aucune sauvegarde pour le moment')+'</small></button>'+
    '<div class="mrow"><button class="mbtn sm" data-m="regions"><b>Régions</b><small>Carte par région</small></button><button class="mbtn sm" data-m="learn"><b>Apprendre</b><small>Carnet de mots</small></button></div>'+
@@ -756,8 +756,10 @@ function menuHtml(){
 function showWelcome(sc){
  oralLeave(sc||'home');menuScreen=sc||'home';welcomeOpen=true;$('#welcome').classList.toggle('home',menuScreen==='home');$('#stage').classList.add('menu');const w=$('#welcome');w.hidden=false;
  const c=$('#welcomeCard');c.classList.remove('in');c.innerHTML=menuHtml();void c.offsetWidth;c.classList.add('in');
- const f=$('button:not([disabled])',c);if(f&&menuScreen!=='home')f.focus()}
+ const f=$('button:not([disabled])',c);if(f&&menuScreen!=='home')f.focus();if(typeof ONL!=='undefined')ONL.sync()}
 $('#welcomeCard').addEventListener('change',e=>{if(e.target.id==='voiceSel'){state.settings=state.settings||{};state.settings.voice=e.target.value;save();say(lang().hello)}});
+$('#welcomeCard').addEventListener('click',e=>{const b=e.target.closest('[data-play]');if(b){ONL.setPlay(b.dataset.play);showWelcome('home');return}if(e.target.closest('[data-onl=test]')){const a=$('#onlApi');if(a)ONL.setApi(a.value);ONL.test()}});
+$('#welcomeCard').addEventListener('change',e=>{if(e.target.id==='onlApi'){ONL.setApi(e.target.value);showWelcome('home')}if(e.target.id==='onlConsent'){ONL.setConsent(e.target.checked)}});
 $('#welcomeCard').addEventListener('keydown',e=>{if((e.key==='Enter'||e.key===' ')&&e.target.matches('[data-map]')){e.preventDefault();const r=e.target.closest('.amap');if(r)selectMap(r,e.target.dataset.map)}});
 $('#welcomeCard').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.matches('.accform input:not([type=checkbox]),#accName')){e.preventDefault();const f=e.target.closest('.accform');accAction(f?(accTab==='login'?'login':'register'):'name')}});
 $('#welcomeCard').addEventListener('change',e=>{if(e.target.id==='oralFile'){oralFileChosen(e.target.files&&e.target.files[0])}if(e.target.id==='rvFile'){rvFile(e.target.files&&e.target.files[0]);e.target.value=''}if(e.target.id==='rvLang'){rvLang=e.target.value;rvPage=0;showWelcome('review')}});
@@ -794,7 +796,7 @@ $('#welcomeCard').addEventListener('click',e=>{
 });
 
 /* ================= 3D ================= */
-const P={x:0,z:26,y:0,vy:0,yaw:0,pitch:.3,heading:Math.PI},keys={},joy={x:0,y:0};
+const P={x:0,z:26,y:0,vy:0,yaw:0,pitch:.3,heading:Math.PI},keys={},joy={x:0,y:0},joyc={x:0,y:0};
 let near=null,R=null,renderMode='2d';const COLL=[];
 let paused=false;
 const frozen=()=>!!tab||welcomeOpen||paused||mapOpen||(LCA.learn&&LCA.learn.isOpen());
@@ -1114,6 +1116,11 @@ function init3D(){
  const walkAnim=(g,ph,amp)=>{const u=g.userData;u.legL.rotation.x=Math.sin(ph)*.75*amp;u.legR.rotation.x=-Math.sin(ph)*.75*amp;u.armL.rotation.x=-Math.sin(ph)*.6*amp;u.armR.rotation.x=Math.sin(ph)*.6*amp};
 
  const player=person(avOpts(),1);scene.add(player);
+ const remote=new Map();
+ function syncRemote(list){const seen=new Set();list.forEach(q=>{seen.add(q.id);let e=remote.get(q.id);
+   if(!e){const g=person(ONL.remoteOpts(q.av),1),tag=label(q.name,2.6);tag.position.set(0,2.6,0);g.add(tag);scene.add(g);e={g,tag};remote.set(q.id,e)}
+   e.g.position.set(q.x,0,q.z);e.g.rotation.y=q.h;walkAnim(e.g,q.ph,q.moving?1:0)});
+  remote.forEach((e,id)=>{if(!seen.has(id)){scene.remove(e.g);e.g.traverse(o=>{if(o.geometry)o.geometry.dispose()});remote.delete(id)}})}
  function addTag(g){if(g.userData.tag){g.remove(g.userData.tag);g.userData.tag.material.map.dispose();g.userData.tag.material.dispose();g.userData.tag=null}const n=heroName();if(n){const s=label(n,2.6);s.position.set(0,2.6,0);g.add(s);g.userData.tag=s}}
  addTag(player);
 
@@ -1344,7 +1351,7 @@ function init3D(){
  const applyLang=()=>{const L=lang();applyTheme(L.region);NPC_DATA.forEach(d=>setLabel(labels[d.id],L.names[d.id]));drawBoard(L.board[0],L.board[1],'1   2   3   4   5');syncPickups()};
  const adapt=pf=>{grass.count=Math.max(1,Math.round(GN*pf.density));bushes.count=Math.max(1,Math.round(BN*pf.density));reeds.count=Math.max(1,Math.round(RN*pf.density));flw.count=Math.max(1,Math.round(NF*pf.density));rocks.count=Math.max(1,Math.round(60*pf.density));R.cull=pf.cull;scene.fog.far=pf.fogFar;if(pf.cull===Infinity)treeList.forEach(c=>{c.visible=true})};
  const treeList=Object.values(FL).flatMap(g=>g.children);
- R={adapt,treeList,cull:Infinity,applyTheme,tick,triggerInter,nearInter,tapRoots,findInter,th:THEMES.ouest,fireK:1,rebuildPlayer(){scene.remove(R.player);R.player.traverse(o=>{if(o.geometry)o.geometry.dispose()});R.player=person(avOpts(),1);scene.add(R.player);addTag(R.player)},setHeroName(){addTag(R.player)},renderer,scene,camera,player,sun,rings,WAND,walkAnim,THREE,V,HUTS,picks,syncPickups,applyLang,beacon,bring,clouds,water,wgeo,wbase,fire,flame,flame2,fireLight,boats,birds,flies,ffs,ffb,ffp,puffs,halo,glint,cloths:R0.cloths||[],ch};
+ R={syncRemote,adapt,treeList,cull:Infinity,applyTheme,tick,triggerInter,nearInter,tapRoots,findInter,th:THEMES.ouest,fireK:1,rebuildPlayer(){scene.remove(R.player);R.player.traverse(o=>{if(o.geometry)o.geometry.dispose()});R.player=person(avOpts(),1);scene.add(R.player);addTag(R.player)},setHeroName(){addTag(R.player)},renderer,scene,camera,player,sun,rings,WAND,walkAnim,THREE,V,HUTS,picks,syncPickups,applyLang,beacon,bring,clouds,water,wgeo,wbase,fire,flame,flame2,fireLight,boats,birds,flies,ffs,ffb,ffp,puffs,halo,glint,cloths:R0.cloths||[],ch};
  applyLang();
 
  /* contrôles */
@@ -1366,7 +1373,7 @@ const R0={};
 
 /* clavier */
 function openMenu(){setPause(false);closeDialog();closePanel();showWelcome('home')}
-function leaveMenu(){if(!state.started&&!anyProgress())return;welcomeOpen=false;$('#welcome').hidden=true;$('#stage').classList.remove('menu');renderTracker()}
+function leaveMenu(){if(!state.started&&!anyProgress())return;welcomeOpen=false;$('#welcome').hidden=true;$('#stage').classList.remove('menu');renderTracker();ONL.sync()}
 $('#menuBtn').onclick=()=>{if(welcomeOpen)leaveMenu();else openMenu()};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
  if(e.target&&/^(select|input|textarea)$/i.test(e.target.tagName))return;
@@ -1387,6 +1394,13 @@ function useNear(n){if(n.inter)R.triggerInter(n.root);else openDialog(n)}
  j.addEventListener('pointerdown',e=>{id=e.pointerId;try{j.setPointerCapture(id)}catch(_){}set(e);hideHint()});
  j.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e)});
  const end=e=>{if(e.pointerId!==id)return;id=null;joy.x=joy.y=0;k.style.transform=''};
+ j.addEventListener('pointerup',end);j.addEventListener('pointercancel',end)})();
+
+(function(){const j=$('#joyc');if(!j)return;const k=$('i',j);let id=null;
+ const set=e=>{const r=j.getBoundingClientRect(),dx=e.clientX-(r.left+r.width/2),dy=e.clientY-(r.top+r.height/2),m=Math.min(1,Math.hypot(dx,dy)/36),a=Math.atan2(dy,dx);joyc.x=Math.cos(a)*m;joyc.y=Math.sin(a)*m;k.style.transform='translate('+Math.cos(a)*m*30+'px,'+Math.sin(a)*m*30+'px)'};
+ j.addEventListener('pointerdown',e=>{id=e.pointerId;try{j.setPointerCapture(id)}catch(_){}set(e);hideHint()});
+ j.addEventListener('pointermove',e=>{if(e.pointerId===id)set(e)});
+ const end=e=>{if(e.pointerId!==id)return;id=null;joyc.x=joyc.y=0;k.style.transform=''};
  j.addEventListener('pointerup',end);j.addEventListener('pointercancel',end)})();
 
 /* minicarte */
@@ -1425,6 +1439,7 @@ function loop(){
   R.player.position.set(P.x,P.y+(Pz.bob||0),P.z);R.player.rotation.order='YXZ';R.player.rotation.y=P.heading;
   const air=P.y>.05;if(airPrev&&!air)landT=0;airPrev=air;if(landT<1)landT=Math.min(1,landT+dt/.22);
   Pz=LCA.motion.pose({ph,speed:moving?sp:0,onGround:!air,vy:P.vy,land:landT,run:keys.shift&&moving?1:moving?Math.max(0,(sp-5.4)/3.1):0});
+  ONL.tick(dt);R.syncRemote(ONL.players);
   const pu=R.player.userData;pu.baseSy=pu.baseSy||1;LCA.motion.apply(R.player,Pz);pu.head.rotation.y=Math.sin(t*.7)*.12;
   if(R.cull!==Infinity&&(++cullN%12===0)){const cc=R.cull;R.treeList.forEach(c=>{c.visible=Math.hypot(c.position.x-P.x,c.position.z-P.z)<cc})}
   if(dlg&&dlg.p&&Math.hypot(P.x-dlg.p.x,P.z-dlg.p.z)>(dlg.r||4.8)+4)closeDialog();
@@ -1464,6 +1479,7 @@ function loop(){
   else{R.beacon.visible=false;R.bring.visible=false;qd.textContent=tg?'':'Termine'}
   /* caméra */
   if(welcomeOpen)P.yaw+=dt*.12;
+  if(!frozen()&&(joyc.x||joyc.y)){P.yaw-=joyc.x*dt*2.4;P.pitch=Math.min(.75,Math.max(.08,P.pitch+joyc.y*dt*1.2))}
   const dist=P.dist||7.5,cp=Math.cos(P.pitch);
   const lk=1-Math.exp(-dt*3);lead.x+=((moving?mvx*Math.min(2.2,sp*.3):0)-lead.x)*lk;lead.z+=((moving?mvz*Math.min(2.2,sp*.3):0)-lead.z)*lk;
   tgt.set(P.x+lead.x+Math.sin(P.yaw)*dist*cp,1.4+Math.sin(P.pitch)*dist+.8,P.z+lead.z+Math.cos(P.yaw)*dist*cp);
@@ -1544,7 +1560,7 @@ function loop2D(){
   if(dlg&&dlg.p&&Math.hypot(P.x-dlg.p.x,P.z-dlg.p.z)>(dlg.r||4.8)+4)closeDialog();
   const L=lang();
   const npcs=NPC_DATA.map(n=>{const dist=Math.hypot(P.x-n.p.x,P.z-n.p.z);n.near=dist<8;n.flip=dist<10&&P.x<n.p.x-.5&&false;return {id:n.id,name:L.names[n.id]||n.id,kind:n.kind,x:n.p.x,z:n.p.z,near:n.near,flip:n.flip,drumTop:!!n.kind.drum}});
-  rr.update(dt,t,P);
+  ONL.tick(dt);rr.update(dt,t,P);
   const tg=curTarget?curTarget():null;
   if(tg&&!welcomeOpen){const dx=tg.x-P.x,dz=tg.z-P.z,dist=Math.hypot(dx,dz);
    arrow.style.transform='rotate('+(Math.atan2(dx,-dz)*180/Math.PI).toFixed(1)+'deg)';qd.textContent='À '+Math.round(dist)+' m'}
@@ -1565,7 +1581,7 @@ function loop2D(){
   if(C.pz===2&&P.y<=0)C.shake=Math.max(C.shake,.3);C.pz=P.y>.05?2:1;
   C.shake=Math.max(0,C.shake-dt*2.2);
   const shift=on?(w<=700?{x:0,y:-.24}:{x:-.16,y:0}):{x:0,y:0};
-  rr.render({t,dt,P:{x:P.x,z:P.z,y:P.y,face:on?'f':(moving||P.y>0?face:(face==='b'?'b':'f')),ph,amp:moving?Math.min(1,sp/5):0,flip},avatar:avOpts(),heroName:heroName(),npcs,tgt:tg&&!welcomeOpen?tg:null,shift,snap:first,cam:{zoom:C.zoom,look:C.look,pitch:C.pitch,shake:C.shake,back:(1-C.intro)*0+C.intro*2}});first=false;
+  rr.render({t,dt,P:{x:P.x,z:P.z,y:P.y,face:on?'f':(moving||P.y>0?face:(face==='b'?'b':'f')),ph,amp:moving?Math.min(1,sp/5):0,flip},avatar:avOpts(),heroName:heroName(),npcs,remote:ONL.players.map(q=>({x:q.x,z:q.z,h:q.h,ph:q.ph,moving:q.moving,name:q.name,o:ONL.remoteOpts(q.av)})),tgt:tg&&!welcomeOpen?tg:null,shift,snap:first,cam:{zoom:C.zoom,look:C.look,pitch:C.pitch,shake:C.shake,back:(1-C.intro)*0+C.intro*2}});first=false;
   if(!worldReady){worldReady=true;if(welcomeOpen&&menuScreen==='home')showWelcome('home');hideBoot()}
   last+=dt;if(last>.05){last=0;drawMini(t)}
  }
@@ -1580,8 +1596,92 @@ function perfTick(dt){if(welcomeOpen||paused||document.hidden||dt<=0)return;PERF
   PERF.frames=0;PERF.t=0}}
 const T0=performance.now();
 function hideBoot(){const b=$('#boot');if(!b)return;setTimeout(()=>{b.classList.add('off');setTimeout(()=>b.remove(),700)},Math.max(0,1700-(performance.now()-T0)))}
+/* ================= MONDE OUVERT (chat texte) ================= */
+/* Mode « Solo » par défaut. Le mode « Monde ouvert » exige un serveur (server/server.cjs) dont l'adresse est saisie sur l'accueil ou fixée dans LCA.config.apiBase. */
+const ONL=(function(){
+ let client=null,wc=null,clientBase='',unread=0,chatOpen=false,joinedRoom=null,joining=false,last={x:0,z:0,h:0},meNow={x:0,z:0,h:0,moving:false};
+ const cfgBase=()=>String((state.settings&&state.settings.api)||(LCA.config&&LCA.config.apiBase)||'').trim().replace(/\/+$/,'');
+ const validBase=u=>{try{const x=new URL(u);return x.protocol==='https:'||(x.protocol==='http:'&&/^(localhost|127\.0\.0\.1|\[::1\])$/.test(x.hostname))}catch(e){return false}};
+ const wanted=()=>!!(state.settings&&state.settings.play==='online');
+ const consent=()=>!!(state.settings&&state.settings.onlineConsent);
+ function me(){const dx=P.x-last.x,dz=P.z-last.z,d=Math.hypot(dx,dz);if(d>.02){meNow.h=Math.atan2(dx,dz);meNow.moving=true}else meNow.moving=false;last.x=P.x;last.z=P.z;meNow.x=P.x;meNow.z=P.z;return meNow}
+ function netAvatar(){const o=avOpts(),r={};['skin','top','bottom','hairCol','hatCol','boubou'].forEach(k=>{if(Number.isInteger(o[k]))r[k]=o[k]});
+  ['fem','glasses','beard','jewel'].forEach(k=>{if(o[k])r[k]=true});if(o.pack)r.pack=true;if(o.skirt)r.skirt=1;if(Number.isInteger(o.pat))r.pat=o.pat;
+  ['hs','hat'].forEach(k=>{if(typeof o[k]==='string')r[k]=o[k]});return r}
+ const remoteOpts=av=>Object.assign({sleeve:true,shoe:0xf2f2f2,bottom:0x333333},av,{pack:av&&av.pack?0x2a2a2a:undefined});
+ function ensure(){const b=cfgBase();if(!validBase(b))return null;if(!client||clientBase!==b){if(wc){wc.stop()}client=LCA.online.create({apiBase:b});clientBase=b;wc=LCA.worldClient.create({api:client.world,me,onChat:onMsg,onStatus:onStatus});joinedRoom=null}return wc}
+ function pseudo(){const n=(heroName()||'').trim();return n.length>=2?n:'Voyageur'}
+ async function sync(){
+  const want=wanted()&&consent()&&!welcomeOpen&&state.started!==0&&!!R;
+  if(!want){if(wc&&joinedRoom){const w=wc;joinedRoom=null;await w.leave()}ui();return}
+  const w=ensure();if(!w){ui();return}
+  if(joinedRoom===state.lang||joining){ui();return}
+  joining=true;try{if(joinedRoom)await w.leave();const jr=await w.join({name:pseudo(),room:state.lang,consent:true,avatar:netAvatar(),x:P.x,z:P.z});mineName=jr.name;joinedRoom=state.lang;w.start(450);toast('Monde ouvert : tu es dans le village '+lang().name+'.')}
+  catch(e){joinedRoom=null;toast(e.code==='room_full'?e.message:'Monde ouvert indisponible ('+(e.message||'erreur')+'). Tu joues en solo.')}
+  finally{joining=false;ui()}}
+ function onStatus(){ui()}
+ function onMsg(m){addLine(m);if(!chatOpen&&!m.sys&&m.id!==(wc&&wc.sid)){unread++;badge()}}
+ const badge=()=>{const b=$('#chatBadge');b.hidden=!unread;b.textContent=unread>9?'9+':unread};
+ function addLine(m){const l=$('#chatLog');if(!l)return;const p=document.createElement('p');
+  if(m.sys||m.err){p.className=m.err?'err':'sys';p.textContent=m.text}else{const b=document.createElement('b');b.textContent=m.name+' : ';p.appendChild(b);p.appendChild(document.createTextNode(m.text));if(mineName&&m.name===mineName)p.className='me'}
+  l.appendChild(p);while(l.children.length>80)l.removeChild(l.firstChild);l.scrollTop=l.scrollHeight}
+ let mineName='';
+ function ui(){const on=!!(wc&&joinedRoom&&wc.status!=='off'),st=wc?wc.status:'off';
+  $('#chatBtn').hidden=!(wanted()&&consent()&&!welcomeOpen&&(on||joining||st==='error'||st==='reconnecting'));
+  const t=$('#chatT');if(t)t.textContent='Village '+(LANGS[state.lang]?LANGS[state.lang].name:'')+' · '+(wc&&wc.players?wc.players.size+1:1)+' joueur(s)';
+  const e=$('#chatSt');if(e){const msg=st==='reconnecting'?'Connexion instable… nouvelle tentative.':st==='error'?'Serveur injoignable.':st==='connecting'?'Connexion…':'';e.hidden=!msg;e.textContent=msg}
+  if(chatOpen)renderPlayers();
+  if(!wanted()||welcomeOpen)closeChat()}
+ function renderPlayers(){const box=$('#chatPl');if(!box||!wc)return;box.textContent='';$('#chatPlS').textContent='Joueurs ('+wc.players.size+') · masquer ou signaler';
+  wc.players.forEach(q=>{const d=document.createElement('div'),b=document.createElement('b'),m=document.createElement('button'),r=document.createElement('button');b.textContent=q.name;
+   const hid=wc.muted.has(q.id);m.type='button';m.textContent=hid?'Afficher':'Masquer';m.dataset.cm=q.id;r.type='button';r.textContent='Signaler';r.dataset.cr=q.id;d.append(b,m,r);box.appendChild(d)})}
+ function openChat(){if(!wc||!joinedRoom)return;chatOpen=true;unread=0;badge();$('#chat').hidden=false;renderPlayers();ui();const l=$('#chatLog');l.scrollTop=l.scrollHeight;if(!matchMedia('(pointer:coarse)').matches)setTimeout(()=>$('#chatIn').focus(),30)}
+ function closeChat(){chatOpen=false;const c=$('#chat');if(c)c.hidden=true;const i=$('#chatIn');if(i)i.blur()}
+ $('#chatBtn').onclick=()=>chatOpen?closeChat():openChat();
+ $('#chatX').onclick=closeChat;
+ $('#chatF').addEventListener('submit',e=>{e.preventDefault();const i=$('#chatIn'),v=i.value.trim();if(!v||!wc)return;wc.say(v);i.value=''});
+ $('#chatPl').addEventListener('click',async e=>{const m=e.target.closest('[data-cm]'),r=e.target.closest('[data-cr]');
+  if(m){wc.mute(m.dataset.cm,!wc.muted.has(m.dataset.cm));renderPlayers()}
+  if(r&&wc){try{await wc.report(r.dataset.cr);toast('Signalement envoyé. Merci !')}catch(err){toast('Signalement impossible : '+err.message)}}});
+ window.addEventListener('keydown',e=>{if(e.target&&/^(input|textarea|select)$/i.test(e.target.tagName)){if(e.key==='Escape'&&chatOpen){closeChat()}return}if(e.key.toLowerCase()==='t'&&wanted()&&joinedRoom&&!welcomeOpen&&!e.ctrlKey&&!e.metaKey){e.preventDefault();chatOpen?closeChat():openChat()}});
+ /* carte d'accueil : choix du mode */
+ function card(){const s=state.settings||{},on=s.play==='online',b=cfgBase(),fixed=!!(LCA.config&&LCA.config.apiBase&&!s.api);
+  return '<div class="playcard"><b>Mode de jeu</b><div class="seg" role="group" aria-label="Mode de jeu"><button data-play="solo" aria-pressed="'+!on+'">Solo</button><button data-play="online" aria-pressed="'+on+'">Monde ouvert</button></div>'+
+   (on?'<p class="sub">Retrouve d’autres joueurs dans le village de ta langue et discute <b>par écrit uniquement</b> (pas d’images, pas de liens, pas de vocal).</p>'+
+    (fixed?'':'<label for="onlApi" class="sub">Adresse du serveur N’Zassa</label><input id="onlApi" type="url" inputmode="url" placeholder="https://…" value="'+esc(s.api||'')+'" autocomplete="off">')+
+    '<label><input id="onlConsent" type="checkbox"'+(s.onlineConsent?' checked':'')+'><span>J’accepte que mon pseudo, mon personnage, ma position et mes messages soient visibles des autres joueurs du village. Je ne partage aucune information personnelle (nom réel, adresse, téléphone, école).</span></label>'+
+    '<div class="row"><button class="btn ghost sm" data-onl="test">Tester le serveur</button></div><p class="pmsg" id="onlMsg" role="status">'+(!b?'Aucun serveur configuré : le monde ouvert nécessite un serveur (voir docs/MONDE_OUVERT.md).':!validBase(b)?'Adresse invalide (https:// requis).':'')+'</p>'
+    :'<p class="sub">Tu joues seul(e) dans ton village : rien n’est envoyé sur Internet.</p>')+'</div>'}
+ async function test(){const m=$('#onlMsg'),b=cfgBase();if(!validBase(b)){m.textContent='Adresse invalide (https:// requis).';return}m.textContent='Test en cours…';
+  try{const r=await fetch(b+'/v1/health',{cache:'no-store'});const j=await r.json();m.textContent=j&&j.ok?'Serveur joignable.':'Réponse inattendue.'}catch(e){m.textContent='Serveur injoignable (adresse, HTTPS ou CORS).'}}
+ function setPlay(v){state.settings=state.settings||{};state.settings.play=v;save()}
+ function setApi(v){state.settings=state.settings||{};state.settings.api=String(v||'').trim().slice(0,200);save()}
+ function setConsent(v){state.settings=state.settings||{};state.settings.onlineConsent=!!v;save()}
+ return {sync,ui,card,test,setPlay,setApi,setConsent,openChat,closeChat,tick(dt){if(wc&&joinedRoom)wc.tick(dt)},
+  get players(){return wc&&joinedRoom?[...wc.players.values()]:[]},remoteOpts,get active(){return !!(wc&&joinedRoom)},wanted,get status(){return wc?wc.status:'off'}}})();
+/* le salon courant sert de nom de joueur local pour surligner ses messages */
+
+/* ================= PLEIN ÉCRAN (téléphones et tablettes) ================= */
+/* L'API plein écran exige un geste de l'utilisateur et n'existe pas sur iPhone (Safari) : dans ce cas, on propose l'installation sur l'écran d'accueil (manifest « fullscreen »). */
+const FSG=(function(){
+ const g=$('#fsGate'),coarse=()=>window.matchMedia&&matchMedia('(pointer:coarse)').matches,root=document.documentElement;
+ const can=!!(root.requestFullscreen||root.webkitRequestFullscreen);
+ const standalone=()=>(window.matchMedia&&(matchMedia('(display-mode: fullscreen)').matches||matchMedia('(display-mode: standalone)').matches))||navigator.standalone===true;
+ const isFs=()=>!!(document.fullscreenElement||document.webkitFullscreenElement);
+ let skipped=false;
+ const need=()=>coarse()&&!isFs()&&!standalone()&&!skipped&&!window.LCA_NO_FSGATE;
+ function sync(){if(!g)return;const n=need();g.hidden=!n;if(n){if(!paused&&typeof setPause==='function'&&!welcomeOpen)setPause(true);
+   const ios=!can;$('#fsGo').hidden=ios;$('#fsSkip').hidden=!ios&&!g.dataset.failed;
+   if(ios)$('#fsP').textContent='Ton navigateur ne permet pas le plein écran automatique. Pour jouer en plein écran : touche « Partager », puis « Sur l’écran d’accueil », et ouvre N’Zassa depuis l’icône. Tu peux aussi continuer ici.'}}
+ async function go(){try{const r=root.requestFullscreen?root.requestFullscreen({navigationUI:'hide'}):root.webkitRequestFullscreen();if(r&&r.then)await r;
+   try{if(screen.orientation&&screen.orientation.lock)await screen.orientation.lock('landscape')}catch(_){}
+  }catch(e){g.dataset.failed='1';$('#fsP').textContent='Le plein écran a été refusé par ce navigateur. Tu peux continuer, mais l’affichage sera moins confortable.'}sync();window.dispatchEvent(new Event('resize'))}
+ if(g){$('#fsGo').onclick=go;$('#fsSkip').onclick=()=>{skipped=true;sync()};
+  document.addEventListener('fullscreenchange',()=>{sync();window.dispatchEvent(new Event('resize'))});document.addEventListener('webkitfullscreenchange',sync)}
+ return {sync,need,isFs}})();
+
 /* ================= DÉMARRAGE ================= */
-load();applyReviewStatus();updateWho();$('#who').onclick=()=>{setPause(false);closeDialog();closePanel();accMsg='';accConfirm=false;showWelcome('account')};
+load();applyReviewStatus();updateWho();FSG.sync();$('#who').onclick=()=>{setPause(false);closeDialog();closePanel();accMsg='';accConfirm=false;showWelcome('account')};
 if(!state.lang||!LANGS[state.lang])state.lang='wolof';
 D();renderLangMenu();renderTracker();
 showWelcome('home');
@@ -1590,10 +1690,10 @@ function startWorld(){
  if(state.settings&&state.settings.mode==='3d'){
   let why='';
   if(!gl3d())why='WebGL ou la bibliothèque 3D est indisponible';
-  else try{init3D();applySettings();loop();renderMode='3d';return}catch(err){why='erreur au démarrage de la 3D';R=null;if(window.console)console.error(err)}
+  else try{init3D();applySettings();loop();renderMode='3d';document.body.classList.add('m3d');return}catch(err){why='erreur au démarrage de la 3D';R=null;if(window.console)console.error(err)}
   fallbackMsg='Le rendu 3D n’est pas disponible sur cet appareil ('+why+'). Le rendu 2D est utilisé à la place ; ton choix est conservé.';
   setTimeout(()=>toast('Rendu 3D indisponible : rendu 2D utilisé.'),2200)}
  start2D()}
 try{startWorld();check()}catch(err){hideBoot();$('#nogl').hidden=false;$('#hint').hidden=true;$('#mini').hidden=true;if(window.console)console.error(err)}
-window.__lca={LANGS,state,P,get mode(){return renderMode},get perf(){return PERF},get R(){return R}};
+window.__lca={LANGS,state,P,get mode(){return renderMode},get perf(){return PERF},get R(){return R},get onl(){return ONL}};
 })();
