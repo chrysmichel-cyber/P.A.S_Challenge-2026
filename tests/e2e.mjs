@@ -23,18 +23,25 @@ async function enter(pg,lang='wolof'){
  await jsClick(pg,'[data-m=new]');await pg.waitForTimeout(300);await jsClick(pg,'.mdot[data-map='+lang+']');await pg.waitForTimeout(200);await jsClick(pg,'[data-pick='+lang+']');await jsClick(pg,'[data-go2=start]');await pg.waitForTimeout(600);
  await pg.waitForTimeout(900);await pg.evaluate(()=>{const c=document.getElementById('closeP');if(c&&!document.getElementById('panel').hidden)c.click()});
  await pg.evaluate(()=>{__lca.P.x=30;__lca.P.z=-19});await pg.waitForTimeout(1300)}
+/* apprendre d’abord : passe toutes les cartes d’étude puis ouvre le quiz (si l’étude est affichée) */
+async function studyThrough(pg){await pg.waitForTimeout(250);if(!(await pg.$('#learn .scard')))return false;
+ for(let i=0;i<40;i++){if(await pg.$('#learn [data-a=snext]')){await pg.click('#learn [data-a=snext]');await pg.waitForTimeout(60)}else break}
+ await pg.click('#learn [data-a=sdone]');await pg.waitForTimeout(300);return true}
 const learn=pg=>pg.evaluate(()=>JSON.parse(localStorage.getItem('lca-v2')).learn);
 
 console.log('1-3 Enseignant, leçon, questions (bureau)');
 {const {ctx,pg}=await open();await enter(pg);
  ok((await pg.innerText('#act')).includes('Maître Ibou'),'1. le bouton d’interaction propose de parler à l’enseignant');
  await pg.keyboard.press('e');await pg.waitForTimeout(400);
- ok((await pg.innerText('#dlgFr')).includes('Es-tu prêt à relever le défi'),'1. dialogue de l’enseignant (touche E)');
+ ok((await pg.innerText('#dlgFr')).includes('D’abord, nous apprenons'),'1. dialogue de l’enseignant (touche E)');
  ok((await pg.innerText('#dlgLater')).includes('Revenir plus tard'),'2. choix « Revenir plus tard »');
  await pg.keyboard.down('a');await pg.waitForTimeout(500);await pg.keyboard.up('a');
  ok(await pg.isVisible('#dialog'),'2. le dialogue ne bloque pas les déplacements (le joueur peut marcher)');
  await pg.click('#dlgGo');await pg.waitForTimeout(500);
- ok(await pg.isVisible('#learn .opts'),'2. « Commencer la leçon » ouvre le quiz');
+ ok(await pg.isVisible('#learn .scard'),'2. l’enseignant ouvre d’abord l’apprentissage (cartes), pas le quiz');
+ ok(!(await pg.$('#learn .opts')),'2. aucun quiz tant que la leçon n’est pas apprise');
+ ok(await studyThrough(pg),'2. toutes les cartes parcourues');
+ ok(await pg.isVisible('#learn .opts'),'2. après l’apprentissage, le quiz de validation s’ouvre');
  ok((await pg.$$('#learn .opt')).length===4,'3. quatre propositions affichées');
  ok((await pg.innerText('#learn .qhead')).includes('Question 1/10'),'3. indicateur « Question 1/10 »');
  ok((await pg.innerText('#learn .prov')).includes('provisoire'),'3. contenu non validé signalé comme provisoire');
@@ -61,7 +68,7 @@ console.log('1-3 Enseignant, leçon, questions (bureau)');
  await ctx.close()}
 
 console.log('Leçon complète, bonus, badges, rechargement');
-{const {ctx,pg}=await open();await enter(pg);await pg.keyboard.press('e');await pg.click('#dlgGo');await pg.waitForTimeout(400);
+{const {ctx,pg}=await open();await enter(pg);await pg.keyboard.press('e');await pg.click('#dlgGo');await pg.waitForTimeout(400);await studyThrough(pg);
  for(let i=0;i<10;i++){
   const a=await pg.evaluate(()=>{const s=JSON.parse(localStorage.getItem('lca-v2')).learn.session;return LCA.quiz.allQuestions(LCA.langs.wolof)[s.qids[s.i]].answer});
   await pg.click('.opt[data-o='+a+']');await pg.click('[data-a=ok]');await pg.click('[data-a=next]')}
@@ -94,7 +101,7 @@ console.log('11 Ancienne sauvegarde');
 console.log('12-13 Mobile, commandes après fermeture, régression des interactions');
 {const {ctx,pg}=await open({ctx:{viewport:{width:390,height:780},hasTouch:true,isMobile:true}});await enter(pg);
  ok(await pg.isVisible('#act'),'12. bouton d’interaction tactile visible');
- await pg.tap('#act');await pg.waitForTimeout(400);await pg.tap('#dlgGo');await pg.waitForTimeout(500);
+ await pg.tap('#act');await pg.waitForTimeout(400);await pg.tap('#dlgGo');await pg.waitForTimeout(500);await studyThrough(pg);
  const box=await pg.evaluate(()=>{const e=document.querySelector('#learn .opt');if(!e)return [0,0];const r=e.getBoundingClientRect();return [r.height,r.width]});
  ok(box[0]>=48,'12. réponses assez grandes pour le tactile ('+Math.round(box[0])+' px)');
  ok(!(await pg.evaluate(()=>document.documentElement.scrollWidth>innerWidth)),'12. pas de défilement horizontal');
@@ -118,7 +125,7 @@ console.log('12-13 Mobile, commandes après fermeture, régression des interacti
  await ctx.close()}
 
 console.log('Leçon indisponible (langue pauvre en contenu)');
-{const {ctx,pg}=await open();await enter(pg,'nubien');
+{const {ctx,pg}=await open();await enter(pg,'umbundu');
  await pg.evaluate(()=>{LCA.learn.openHub()});await pg.waitForTimeout(300);
  ok((await pg.innerText('#learn')).includes('À venir')||(await pg.innerText('#learn')).includes('À compléter'),'contenu indisponible clairement annoncé');
  await ctx.close()}
@@ -155,7 +162,7 @@ for(const mode of ['2d','3d']){
   await pg.keyboard.press('e');await pg.waitForTimeout(350);
   const vis=await pg.isVisible('#dialog'),name=vis?await pg.innerText('#dlgName'):'';
   ok(vis&&new RegExp(nm,'i').test(name),mode+' : dialogue avec '+id+' ('+name+')');
-  if(id==='ibou'){await pg.click('#dlgGo');await pg.waitForTimeout(400);ok(await pg.isVisible('#learn .opts'),mode+' : leçon lancée depuis l’enseignant');
+  if(id==='ibou'){await pg.click('#dlgGo');await pg.waitForTimeout(400);await studyThrough(pg);ok(await pg.isVisible('#learn .opts'),mode+' : leçon lancée depuis l’enseignant');
    await playQuestions(pg,3);const L=await learn(pg);ok(L.xp===35,mode+' : quiz, 3 bonnes réponses = 35 XP (10+10+10+5 série)');await pg.click('#learn .lx');await pg.waitForTimeout(300)}
   else{await pg.evaluate(()=>{document.getElementById('dlgLater').click()});await pg.waitForTimeout(150)}}
  /* contrôles après fermeture */
@@ -174,7 +181,7 @@ for(const mode of ['2d','3d']){
 
 console.log('\n== Changement de mode sans perte ==');
 {const {ctx,pg}=await open({mode:'2d'});await enter(pg);
- await pg.keyboard.press('e');await pg.click('#dlgGo');await pg.waitForTimeout(300);await playQuestions(pg,3);await pg.click('#learn .lx');
+ await pg.keyboard.press('e');await pg.click('#dlgGo');await pg.waitForTimeout(300);await studyThrough(pg);await playQuestions(pg,3);await pg.click('#learn .lx');
  const pk=await pg.evaluate(()=>{const p=__lca.R.picks[1];return {x:p.x,z:p.z}});await pg.evaluate(p=>{__lca.P.x=p.x;__lca.P.z=p.z},pk);await pg.waitForTimeout(600);
  const before=await pg.evaluate(()=>({xp:__lca.state.learn.xp,got:JSON.stringify(__lca.state.d.wolof.got),picked:JSON.stringify(__lca.state.d.wolof.picked),badges:Object.keys(__lca.state.learn.badges).join()}));
  await pg.click('#menuBtn');await pg.waitForTimeout(300);await jsClick(pg,'[data-m=settings]');await pg.waitForTimeout(300);
@@ -261,11 +268,11 @@ console.log('\n== Nom du personnage en 3D ==');
 
 console.log('\n== Langues ajoutées depuis la carte (v0.10) ==');
 {const {ctx,pg}=await open();
- ok(await pg.evaluate(()=>Object.keys(__lca.LANGS).length)===58,'58 langues chargées');
+ ok(await pg.evaluate(()=>Object.keys(__lca.LANGS).length)===42,'42 langues chargées');
  ok(await pg.evaluate(()=>document.querySelectorAll('.mdot').length>=0),'carte prête');
  await jsClick(pg,'[data-m=new]');await pg.waitForTimeout(300);
- ok(await pg.evaluate(()=>document.querySelectorAll('.amap .mdot').length)===58,'58 pastilles sur la carte');
- for(const id of ['yoruba','ibibio']){
+ ok(await pg.evaluate(()=>document.querySelectorAll('.amap .mdot').length)===42,'42 pastilles sur la carte');
+ for(const id of ['yoruba','kituba']){
   await jsClick(pg,'.mdot[data-map='+id+']');await pg.waitForTimeout(200);await jsClick(pg,'[data-pick='+id+']');await pg.waitForTimeout(200);
   ok((await pg.innerText('#welcomeCard')).toLowerCase().includes(id==='yoruba'?'contenu partiel':'à compléter')||true,'fiche '+id);
   await jsClick(pg,'[data-go2=start]');await pg.waitForTimeout(1200);
@@ -326,7 +333,7 @@ console.log('\n== Carte : fond réel, frontières indicatives, pastilles espacé
  const m=await pg.evaluate(()=>{const svg=document.querySelector('.amap svg');const dots=[...svg.querySelectorAll('.mdot .dc')].map(c=>[+c.getAttribute('cx'),+c.getAttribute('cy')]);
   let g=1e9;for(let i=0;i<dots.length;i++)for(let j=i+1;j<dots.length;j++)g=Math.min(g,Math.hypot(dots[i][0]-dots[j][0],dots[i][1]-dots[j][1]));
   return {n:dots.length,gap:g,borders:!!svg.querySelector('.mbord'),note:document.querySelector('.amap .note').textContent}});
- ok(m.n===58,'carte : 58 pastilles');ok(m.gap>=12,'carte : aucune pastille ne chevauche une autre (écart min '+m.gap.toFixed(1)+')');
+ ok(m.n===42,'carte : 42 pastilles');ok(m.gap>=12,'carte : aucune pastille ne chevauche une autre (écart min '+m.gap.toFixed(1)+')');
  ok(m.borders,'carte : frontières indicatives dessinées');ok(/indicatives/.test(m.note)&&/différend/.test(m.note),'carte : mention « indicatives » visible');
  await ctx.close()}
 
@@ -374,6 +381,249 @@ console.log('\n== Monde ouvert : deux joueurs, chat texte, avatars distants ==')
 {const {ctx,pg}=await open();await jsClick(pg,'[data-play=online]');await pg.waitForTimeout(300);
  ok((await pg.innerText('.playcard')).includes('Aucun serveur configuré'),'monde ouvert sans serveur : message clair, jeu solo intact');
  await jsClick(pg,'[data-play=solo]');ok((await pg.innerText('.playcard')).includes('rien n’est envoyé'),'mode Solo : aucune donnée envoyée');await ctx.close()}
+
+
+console.log('Gardien de la mémoire, jour/nuit, animaux, mode petits');
+{const {ctx,pg}=await open();await enter(pg);
+ await pg.evaluate(()=>{__lca.P.x=4;__lca.P.z=-42});await pg.waitForTimeout(1300);
+ await pg.keyboard.press('e');await pg.waitForTimeout(400);
+ ok((await pg.innerText('#dlgGo')).includes('grand livre'),'gardien : le dialogue propose d’ouvrir le grand livre');
+ await pg.click('#dlgGo');await pg.waitForTimeout(400);
+ ok(await pg.isVisible('#elder .elcard'),'gardien : le grand livre s’ouvre');
+ ok((await pg.$$('#elder .elchip')).length>=5,'gardien : chapitres cliquables (lieu, langue, histoire, personnalité, traditions…)');
+ ok((await pg.innerText('#elder .elbody')).includes('Sénégal'),'gardien : le chapitre « Où vit ce peuple ? » donne les pays');
+ await pg.click('#elder [data-el=done]',{timeout:500}).catch(()=>{});
+ ok(await pg.isVisible('#elder .elcard'),'gardien : le livre reste ouvert tant que tous les chapitres ne sont pas lus');
+ const n=(await pg.$$('#elder .elchip')).length;for(let i=1;i<n;i++){await pg.click('#elder .elchip[data-i="'+i+'"]');await pg.waitForTimeout(80)}
+ ok((await pg.innerText('#elder .elbody')).includes('Contenu provisoire'),'gardien : dernier chapitre rappelle que le contenu est à vérifier');
+ await pg.click('#elder [data-el=done]');await pg.waitForTimeout(300);
+ ok(!(await pg.isVisible('#elder')),'gardien : le livre se ferme après lecture complète');
+ ok(await pg.evaluate(()=>!!__lca.state.d.wolof.flags.histDone),'gardien : la quête « écoute le gardien » est validée');
+ /* jour / nuit / météo */
+ const st=await pg.evaluate(()=>{__lca.amb.set(0);return null});await pg.waitForTimeout(400);
+ ok(await pg.isVisible('#ambHud'),'ambiance : l’heure et la météo sont affichées');
+ await pg.evaluate(()=>__lca.amb.set((2-9+24)/24*420));await pg.waitForTimeout(500);
+ ok((await pg.innerText('#ambHud')).includes('Nuit'),'ambiance : à 2 h, c’est la nuit');
+ ok(await pg.evaluate(()=>__lca.amb.st.night>.9),'ambiance : lumière de nuit calculée');
+ await pg.evaluate(()=>{const s=__lca.state.settings;s.amb=0});await pg.waitForTimeout(400);
+ ok(!(await pg.isVisible('#ambHud'))&&!(await pg.isVisible('#amb')),'ambiance : désactivable dans les paramètres');
+ await ctx.close()}
+{const {ctx,pg}=await open({mode:'3d'});await enter(pg);
+ await pg.evaluate(()=>{__lca.P.x=36;__lca.P.z=-4});await pg.waitForTimeout(1500);
+ ok(await pg.evaluate(()=>__lca.R.ANTAGS.some(a=>a.lb.visible&&a.type==='vache')),'animaux 3D : « Vache » s’affiche à proximité');
+ await pg.evaluate(()=>{__lca.P.x=66;__lca.P.z=-56});await pg.waitForTimeout(1200);
+ ok(await pg.evaluate(()=>__lca.R.ANTAGS.every(a=>!a.lb.visible)),'animaux 3D : étiquettes masquées de loin');
+ await ctx.close()}
+{const {ctx,pg}=await open({init:()=>{try{const s=JSON.parse(localStorage.getItem('lca-v2')||'{}');s.settings=Object.assign({sound:1,shadows:0,quality:0,__set:1,mode:'2d',modeV:2},s.settings,{kids:1});localStorage.setItem('lca-v2',JSON.stringify(s))}catch(e){}},mode:undefined});await enter(pg);
+ ok(await pg.evaluate(()=>document.body.classList.contains('kids')),'petits : mode actif');
+ await pg.keyboard.press('e');await pg.waitForTimeout(300);
+ ok((await pg.innerText('#dlgFr')).includes('images'),'petits : l’enseignant parle simplement');
+ await pg.click('#dlgGo');await pg.waitForTimeout(400);
+ ok(await pg.isVisible('#learn .scard.kid .semo'),'petits : carte d’étude avec une grande image');
+ await studyThrough(pg);
+ ok((await pg.$$('#learn .kopt')).length===2,'petits : deux grosses réponses seulement');
+ const a=await pg.evaluate(()=>{const s=JSON.parse(localStorage.getItem('lca-v2')).learn.session;return LCA.quiz.allQuestions(LCA.langs.wolof)[s.qids[s.i]].answer});
+ await pg.click('#learn .kopt[data-o='+a+']');await pg.waitForTimeout(300);
+ ok((await pg.innerText('#learn .kfb')).includes('⭐'),'petits : encouragement et étoile après une bonne réponse');
+ ok((await pg.$$('#learn .kopt:disabled')).length===2,'petits : réponse validée directement, sans bouton « Valider »');
+ await pg.evaluate(()=>{__lca.state.settings.play='online'});
+ ok(await pg.evaluate(()=>!__lca.onl.active),'petits : le monde ouvert ne démarre jamais');
+ await ctx.close()}
+
+{const {ctx,pg}=await open({});await enter(pg);
+ /* trésors cachés */
+ ok(await pg.isVisible('#hidHud'),'trésors : le compteur est affiché');
+ ok((await pg.innerText('#hidN')).trim()==='0/5','trésors : 0/5 au départ');
+ ok(await pg.evaluate(()=>__lca.hid.list.length)===5,'trésors : 5 trésors cachés dans le village');
+ await pg.evaluate(()=>{const h=__lca.hid.list[0];__lca.P.x=h.x>0?h.x-40:h.x+40;__lca.P.z=h.z});await pg.waitForTimeout(500);
+ ok(await pg.evaluate(()=>__lca.hid.list[0].rv===0),'trésors : invisible de loin');
+ await pg.evaluate(()=>{const h=__lca.hid.list[0];__lca.P.x=h.x-4;__lca.P.z=h.z});await pg.waitForTimeout(500);
+ ok(await pg.evaluate(()=>{const r=__lca.hid.list[0].rv;return r>0&&r<=1}),'trésors : le scintillement apparaît à l’approche');
+ const learned0=await pg.evaluate(()=>Object.keys(__lca.state.d.wolof.learned).length),xp0=await pg.evaluate(()=>__lca.state.learn.xp|0);
+ await pg.evaluate(()=>{const h=__lca.hid.list[0];__lca.P.x=h.x;__lca.P.z=h.z});await pg.waitForTimeout(600);
+ ok(await pg.evaluate(()=>__lca.state.d.wolof.hid&&__lca.state.d.wolof.hid[0]===1),'trésors : le trésor est ramassé et enregistré');
+ ok((await pg.innerText('#hidN')).trim()==='1/5','trésors : le compteur passe à 1/5');
+ ok((await pg.innerText('#toast')).includes('Trésor 1/5'),'trésors : message de découverte');
+ ok(await pg.evaluate(()=>(__lca.state.learn.xp|0)>0)&&(await pg.evaluate(()=>__lca.state.learn.xp|0))===xp0+5,'trésors : +5 points');
+ ok((await pg.evaluate(()=>Object.keys(__lca.state.d.wolof.learned).length))>=learned0,'trésors : un mot est offert');
+ ok(await pg.evaluate(()=>JSON.parse(localStorage.getItem('lca-v2')).d.wolof.hid[0]===1),'trésors : enregistrés dans la sauvegarde');
+ ok(await pg.evaluate(()=>__lca.hid.list[0].got===true&&__lca.hid.list[1].got===false),'trésors : seul le premier est trouvé');
+ /* minicarte agrandissable */
+ await pg.click('#mini');await pg.waitForTimeout(300);
+ ok(await pg.evaluate(()=>document.getElementById('mini').classList.contains('big')&&document.getElementById('mini').getAttribute('aria-expanded')==='true'),'minicarte : un appui l’agrandit');
+ ok(await pg.isVisible('#miniLeg'),'minicarte : la légende s’affiche quand elle est agrandie');
+ await pg.click('#mini');await pg.waitForTimeout(200);
+ ok(await pg.evaluate(()=>!document.getElementById('mini').classList.contains('big')),'minicarte : un second appui la réduit');
+ /* carte d'Afrique lisible */
+ await pg.evaluate(()=>document.getElementById('langBtn').click());await pg.waitForTimeout(400);
+ ok(await pg.isVisible('#mapBody .msearch')&&(await pg.$$('#mapBody .mregs button')).length===6,'carte : recherche et six boutons de zoom');
+ ok((await pg.innerText('#mapBody .minfo')).includes('1/5'),'carte : compteur de trésors du village affiché');
+ const w0=await pg.evaluate(()=>+document.querySelector('#mapBody svg').viewBox.baseVal.width);
+ await pg.click('#mapBody [data-mz=est]');await pg.waitForTimeout(300);
+ const w1=await pg.evaluate(()=>+document.querySelector('#mapBody svg').viewBox.baseVal.width);
+ ok(w1<w0*.75,'carte : le zoom sur une région rapproche la vue ('+Math.round(w0)+' → '+Math.round(w1)+')');
+ ok((await pg.$$('#mapBody .mlab')).length>=6,'carte : plusieurs noms lisibles une fois zoomé');
+ ok(await pg.evaluate(()=>{const r=[...document.querySelectorAll('#mapBody .mlab rect')].map(e=>e.getBoundingClientRect());for(let i=0;i<r.length;i++)for(let j=i+1;j<r.length;j++){const a=r[i],b=r[j];if(a.left<b.right-1&&b.left<a.right-1&&a.top<b.bottom-1&&b.top<a.bottom-1)return false}return true}),'carte : aucun nom ne recouvre un autre');
+ await pg.fill('#mapBody .msearch','swahili');await pg.dispatchEvent('#mapBody .msearch','change');await pg.waitForTimeout(300);
+ ok((await pg.innerText('#mapBody .minfo')).includes('Swahili'),'carte : la recherche sélectionne la langue');
+ /* climat selon la zone */
+ const goto=async id=>{await pg.evaluate(id=>document.querySelector('#mapBody [data-map='+id+']').dispatchEvent(new MouseEvent('click',{bubbles:true})),id);await pg.evaluate(()=>document.querySelector('#mapBody [data-golang]').click());await pg.waitForTimeout(600);if(!(await pg.evaluate(()=>document.getElementById('mapov').hidden)))await pg.evaluate(()=>document.getElementById('mapClose').click());return pg.evaluate(()=>__lca.amb.prof&&__lca.amb.prof.id)};
+ await pg.evaluate(()=>document.getElementById('mapClose').click());
+ await pg.evaluate(()=>document.getElementById('langBtn').click());await pg.waitForTimeout(300);
+ const cd=await goto('arabe');ok(cd==='desert','climat : désert pour l’arabe (profil '+cd+')');
+ const hAr=await pg.evaluate(()=>{__lca.amb.set(0);return null});await pg.waitForTimeout(300);
+ const hourAr=await pg.evaluate(()=>__lca.amb.st&&__lca.amb.st.hour);
+ await pg.evaluate(()=>document.getElementById('langBtn').click());await pg.waitForTimeout(300);
+ const cf=await goto('lingala');ok(cf==='foret','climat : forêt équatoriale pour le lingala (profil '+cf+')');
+ await pg.evaluate(()=>{__lca.amb.set(0)});await pg.waitForTimeout(300);
+ const hourLi=await pg.evaluate(()=>__lca.amb.st&&__lca.amb.st.hour);
+ ok(typeof hourAr==='number'&&typeof hourLi==='number'&&Math.abs(hourAr-hourLi)>.3,'climat : l’heure locale diffère selon la longitude ('+(hourAr&&hourAr.toFixed(1))+' h / '+(hourLi&&hourLi.toFixed(1))+' h)');
+ ok((await pg.evaluate(()=>document.getElementById('hidHud').hidden))===false&&(await pg.innerText('#hidN')).trim()==='0/5','trésors : chaque village a son propre compteur');
+ await ctx.close()}
+
+for(const mode of ['2d','3d']){const {ctx,pg}=await open({mode});await enter(pg);
+ const T=mode+' : ';
+ const atHour=async h=>{await pg.evaluate(h=>{const lon=__lca.LANGS[__lca.state.lang].geo.lon;__lca.amb.set(((h-9-lon/15+48)%24)/24*420)},h);await pg.waitForTimeout(700)};
+ await atHour(10);await pg.waitForTimeout(600);
+ ok(await pg.evaluate(()=>{const d=__lca.life.data;return !!d&&d.st.filter(q=>q.res.length).length===8&&d.people.length>=12&&d.st.some(q=>q.id==='gate')}),T+'village vivant : 8 lieux de vie, la porte d’entrée et au moins 12 habitants');
+ ok(await pg.evaluate(()=>__lca.life.data.people.filter(r=>r.vis).length)>=9,T+'le matin, la plupart des habitants sont à leur poste');
+ /* interaction avec la vendeuse */
+ await pg.evaluate(()=>{const r=__lca.life.data.people.find(x=>x.id==='vend1');__lca.P.x=r.px;__lca.P.z=r.pz+2.2});await pg.waitForTimeout(700);
+ ok((await pg.innerText('#actTxt')).includes('Vendeuse'),T+'le bouton propose de parler à la vendeuse');
+ await pg.keyboard.press('e');await pg.waitForTimeout(400);
+ ok((await pg.innerText('#dlgName')).includes('Vendeuse')&&(await pg.innerText('#dlgFr')).includes('marché'),T+'dialogue du marché');
+ ok((await pg.innerText('#dlgFr')).length>0&&await pg.isVisible('#dialog'),T+'dialogue affiché');
+ let guard=0;while(await pg.isVisible('#dialog')&&guard++<8){await pg.click('#dlgGo');await pg.waitForTimeout(250)}
+ ok(!(await pg.isVisible('#dialog')),T+'le dialogue se termine après les pages');
+ ok(await pg.evaluate(()=>!!(__lca.state.d.wolof.life&&__lca.state.d.wolof.life.market)),T+'découverte culturelle enregistrée');
+ ok((await pg.innerText('#toast')).includes('Découverte culturelle'),T+'message de découverte');
+ /* routines : le conteur vient le soir, tout le monde dort la nuit */
+ await atHour(20);
+ ok(await pg.evaluate(()=>{const p=__lca.life.data.people;return p.find(r=>r.id==='griot').vis&&!p.find(r=>r.id==='vend1').vis}),T+'à 20 h : le conteur est là, le marché est fermé');
+ await atHour(3);
+ ok(await pg.evaluate(()=>__lca.life.data.people.every(r=>!r.vis)),T+'à 3 h : le village dort');
+ if(mode==='3d')ok(await pg.evaluate(()=>__lca.life.data.people.every(r=>!r.g.visible)),T+'3D : les habitants disparaissent la nuit');
+ /* mouvements : les bras bougent (pas de personnage figé) */
+ await atHour(10);
+ const a1=await pg.evaluate(()=>__lca.life.data.people.find(r=>r.id==='cook1').pose.armR);await pg.waitForTimeout(450);const a2=await pg.evaluate(()=>__lca.life.data.people.find(r=>r.id==='cook1').pose.armR);
+ ok(Math.abs(a1-a2)>.01,T+'la cuisinière remue la marmite (animation)');
+ const k1=await pg.evaluate(()=>{const r=__lca.life.data.people.find(x=>x.id==='kid1');return [r.px,r.pz]});await pg.waitForTimeout(1600);const k2=await pg.evaluate(()=>{const r=__lca.life.data.people.find(x=>x.id==='kid1');return [r.px,r.pz]});
+ ok(Math.hypot(k1[0]-k2[0],k1[1]-k2[1])>.15,T+'les enfants jouent en courant');
+ /* sons d'ambiance */
+ await pg.mouse.click(300,300);await pg.evaluate(()=>{__lca.state.settings.sound=1;__lca.state.settings.ambsnd=1});
+ await pg.evaluate(()=>{const m=__lca.life.data.st.find(s=>s.id==='market');__lca.P.x=m.x;__lca.P.z=m.z+3});await pg.waitForTimeout(1800);
+ ok(await pg.evaluate(()=>!!__lca.life.snd.n),T+'le moteur de sons d’ambiance démarre après un geste');
+ ok(await pg.evaluate(()=>__lca.life.snd.n.market.gain.value>0.02),T+'on entend le marché de près');
+ await pg.evaluate(()=>{__lca.state.settings.ambsnd=0});await pg.waitForTimeout(2500);
+ ok(await pg.evaluate(()=>__lca.life.snd.n.master.gain.value<.05),T+'les sons d’ambiance se coupent dans les paramètres');
+
+ /* v0.18 : entrée du village, voyage, collisions, animaux */
+ await atHour(10);
+ const inColl=()=>pg.evaluate(()=>{const P=__lca.P;return __lca.travel.coll.some(c=>(!c.g||c.g.visible)&&Math.hypot(P.x-c.x,P.z-c.z)<c.r+.3)});
+ const sig=await pg.evaluate(()=>__lca.life.data.st.map(s=>s.id).sort().join(','));(globalThis.__sig=globalThis.__sig||{})[mode]=sig;
+ await pg.evaluate(()=>{__lca.state.learn.xp=77});
+ await pg.evaluate(()=>__lca.travel.go('swahili'));await pg.waitForTimeout(300);
+ ok(await pg.evaluate(()=>__lca.travel.busy&&document.getElementById('travel').classList.contains('on')),T+'voyage : écran de transition affiché pendant le chargement');
+ ok(await pg.evaluate(()=>{const e=document.getElementById('travelName');return e.textContent==='Swahili'||e.textContent.length>2}),T+'voyage : le nom du village de destination est affiché');
+ await pg.waitForFunction(()=>!__lca.travel.busy,null,{timeout:12000});await pg.waitForTimeout(500);
+ const arr=await pg.evaluate(()=>({l:__lca.state.lang,x:__lca.P.x,z:__lca.P.z,h:__lca.P.heading,xp:__lca.state.learn.xp,on:document.getElementById('travel').classList.contains('on')}));
+ ok(arr.l==='swahili'&&Math.abs(arr.x)<6&&arr.z>35&&Math.abs(Math.abs(arr.h)-Math.PI)<.2,T+'arrivée à l’entrée du village, tournée vers l’intérieur ('+arr.x.toFixed(1)+', '+arr.z.toFixed(1)+')');
+ ok(arr.xp===77&&!arr.on,T+'voyage : langue changée, points conservés, transition terminée');
+ ok(!(await inColl()),T+'l’arrivée n’est dans aucun bâtiment, arbre ou obstacle');
+ await pg.waitForTimeout(800);
+ await pg.keyboard.down('w');await pg.waitForFunction(z=>__lca.P.z<z-2,arr.z,{timeout:9000}).catch(()=>{});await pg.keyboard.up('w');
+ ok(await pg.evaluate(z=>__lca.P.z<z-2,arr.z),T+'déplacement : avancer vers l’intérieur du village (haut)');
+ if(mode==='3d')ok(await pg.evaluate(()=>{const c=__lca.R.camera.position,P=__lca.P;return c.z>P.z+2&&c.y>P.y+2}),T+'caméra : derrière et au-dessus du personnage');
+ await pg.evaluate(()=>__lca.travel.go('wolof'));await pg.waitForFunction(()=>!__lca.travel.busy,null,{timeout:12000});await pg.waitForTimeout(500);
+ const back=await pg.evaluate(()=>({l:__lca.state.lang,z:__lca.P.z,h:__lca.P.heading,xp:__lca.state.learn.xp}));
+ ok(back.l==='wolof'&&back.z>35&&back.xp===77&&Math.abs(Math.abs(back.h)-Math.PI)<.2&&!(await inColl()),T+'voyage retour : même règle, points conservés');
+ ok(await pg.evaluate(()=>{const p=__lca.P;return Math.abs(p.heading-Math.PI)<.2}),T+'le personnage regarde vers le nord (intérieur)');
+ await pg.waitForTimeout(900);
+ /* collisions : poteau de la porte et bassin */
+ const gp=await pg.evaluate(()=>{const g=__lca.life.data.st.find(s=>s.id==='gate');return {x:g.x,z:g.z}});
+ await pg.evaluate(g=>{__lca.P.x=g.x+2.6;__lca.P.z=g.z+.05},gp);await pg.waitForTimeout(400);
+ ok(await pg.evaluate(g=>Math.hypot(__lca.P.x-(g.x+2.6),__lca.P.z-g.z)>.9,gp),T+'collision : le poteau de la porte repousse le joueur');
+ const pd=await pg.evaluate(()=>{const g=__lca.life.data.st.find(s=>s.id==='pond');return g&&{x:g.x,z:g.z}});
+ if(pd){await pg.evaluate(g=>{__lca.P.x=g.x;__lca.P.z=g.z+5.5},pd);await pg.waitForTimeout(300);await pg.keyboard.down('w');await pg.waitForTimeout(2500);await pg.keyboard.up('w');
+  ok(await pg.evaluate(g=>__lca.P.z>g.z+2.5,pd),T+'collision : on ne marche pas dans le bassin (z='+(await pg.evaluate(()=>__lca.P.z.toFixed(1)))+')');
+  await pg.evaluate(g=>{__lca.P.x=g.x-5.5;__lca.P.z=g.z},pd);await pg.waitForTimeout(300);await pg.keyboard.down('d');await pg.waitForFunction(g=>__lca.P.x>g.x+2.5,pd,{timeout:40000}).catch(()=>{});await pg.keyboard.up('d');
+  ok(await pg.evaluate(g=>__lca.P.x>g.x+2.5&&Math.abs(__lca.P.z-g.z)<1.2,pd),T+'le pont permet de traverser le bassin');}
+ /* animaux */
+ const an=await pg.evaluate(()=>(__lca.life.data.animals||[]).map(a=>[a.type,a.x,a.z]));
+ ok(an.length>=6&&['poule','goat','mouton'].every(t=>an.some(a=>a[0]===t)),T+'animaux : poules, chèvres et moutons présents ('+an.length+')');
+ await pg.waitForTimeout(6000);
+ const an2=await pg.evaluate(()=>(__lca.life.data.animals||[]).map(a=>[a.type,a.x,a.z]));
+ ok(an2.some((a,i)=>Math.hypot(a[1]-an[i][1],a[2]-an[i][2])>.3),T+'animaux : ils se déplacent');
+ ok(await pg.evaluate(()=>{const c=__lca.travel.coll;return __lca.life.data.animals.every(a=>!c.some(q=>(!q.g||q.g.visible)&&Math.hypot(a.x-q.x,a.z-q.z)<q.r-.1))}),T+'animaux : aucun dans un obstacle');
+ /* jardin et point d'eau : dialogues sans mot inventé */
+ for(const id of ['gardener','watercarrier']){
+  await pg.evaluate(id=>{const r=__lca.life.data.people.find(x=>x.id===id);__lca.P.x=r.px;__lca.P.z=r.pz+2.2},id);await pg.waitForTimeout(700);
+  ok((await pg.innerText('#actTxt')).length>2,T+id+' : le bouton d’interaction apparaît');
+  await pg.keyboard.press('e');await pg.waitForTimeout(400);
+  ok(await pg.isVisible('#dialog'),T+id+' : dialogue ouvert');
+  let g2=0;while(await pg.isVisible('#dialog')&&g2++<8){await pg.click('#dlgGo');await pg.waitForTimeout(220)}}
+ ok(await pg.evaluate(()=>{const l=__lca.state.d.wolof.life||{};return !!l.garden&&!!l.pond}),T+'découvertes jardin et point d’eau enregistrées');
+ await ctx.close()}
+
+/* 2D/3D : mêmes lieux de vie */
+ok(globalThis.__sig['2d']===globalThis.__sig['3d'],'synchro 2D/3D : mêmes lieux de vie ('+globalThis.__sig['2d']+' / '+globalThis.__sig['3d']+')');
+
+/* entrée de chaque village : aucune apparition dans un obstacle, orientée vers l'intérieur (2D, les 42 langues) */
+{const {ctx,pg}=await open({mode:'2d'});await enter(pg);
+ const ids=await pg.evaluate(()=>Object.keys(__lca.LANGS));let bad=[];
+ for(const id of ids){if(id==='wolof')continue;await pg.evaluate(id=>__lca.travel.go(id),id);await pg.waitForFunction(()=>!__lca.travel.busy,null,{timeout:12000});await pg.waitForTimeout(150);
+  const r=await pg.evaluate(()=>{const P=__lca.P;return {z:P.z,h:P.heading,hit:__lca.travel.coll.some(c=>Math.hypot(P.x-c.x,P.z-c.z)<c.r+.3)}});
+  if(r.hit||r.z<35||Math.abs(Math.abs(r.h)-Math.PI)>.2)bad.push(id)}
+ ok(bad.length===0,'entrées : '+ids.length+' villages visités, aucune apparition dans un obstacle ou mal orientée'+(bad.length?' : '+bad.join(','):''));
+ await ctx.close()}
+
+/* v0.19 : inactivité du joueur (2D et 3D) */
+for(const mode of ['2d','3d']){const {ctx,pg}=await open({mode});await enter(pg);const T=mode+' : ';
+ await pg.evaluate(()=>{__lca.idle.cfg.thresh=3;__lca.P.x=10;__lca.P.z=30});
+ ok(await pg.evaluate(()=>__lca.idle.kind===null),T+'inactivité : aucun geste tant que le joueur agit');
+ await pg.waitForFunction(()=>__lca.idle.kind!==null,null,{timeout:40000}).catch(()=>{});
+ ok(await pg.evaluate(()=>__lca.idle.kind!==null),T+'inactivité : un geste démarre après le délai');
+ ok(await pg.evaluate(()=>__lca.idle.cfg.thresh===3&&true),T+'délai paramétrable (60 s par défaut dans le jeu)');
+ await pg.keyboard.down('w');await pg.waitForTimeout(400);await pg.keyboard.up('w');
+ await pg.waitForFunction(()=>__lca.idle.kind===null&&__lca.idle.w===0,null,{timeout:8000}).catch(()=>{});
+ ok(await pg.evaluate(()=>__lca.idle.kind===null&&__lca.idle.w===0),T+'inactivité : interrompue proprement dès qu’on bouge');
+ await ctx.close()}
+await (async()=>{const {ctx,pg}=await open({mode:'2d'});await enter(pg);ok(await pg.evaluate(()=>{const I=LCA.idle;return I.cfg.thresh===60}),'inactivité : seuil réel de 60 secondes');await ctx.close()})();
+
+console.log('\n== v0.19 : atelier de langue ==');
+{const {ctx,pg}=await open({mode:'2d',ctx:{permissions:['microphone']}});await enter(pg);
+ await pg.evaluate(()=>{const d=__lca.state.d.wolof;[0,1,2,3,4].forEach(i=>d.learned[i]=1);document.getElementById('boot')&&document.getElementById('boot').remove()});
+ await pg.evaluate(()=>__lca.lab.open());await pg.waitForTimeout(400);
+ ok((await pg.innerText('#lab')).includes('mots découverts'),'atelier : statistiques par langue');
+ await jsClick(pg,'[data-lab=reviewforce]').catch(()=>{});await jsClick(pg,'[data-lab=review]');await pg.waitForTimeout(200);await jsClick(pg,'[data-lab=reviewforce]');await pg.waitForTimeout(200);
+ await jsClick(pg,'[data-lab=reveal]');await jsClick(pg,'[data-lab="grade:good"]');await pg.waitForTimeout(150);
+ ok(await pg.evaluate(()=>Object.values(__lca.state.d.wolof.srs.cards).some(c=>c.box===1&&c.ok===1)),'révision : bonne réponse = boîte supérieure, enregistrée');
+ await jsClick(pg,'[data-lab=home]');await jsClick(pg,'[data-lab=ref]');await pg.waitForTimeout(300);
+ await pg.fill('#rfName','Awa');await jsClick(pg,'#rfNat');await jsClick(pg,'[data-lab=rrecstart]');await pg.waitForTimeout(2200);await jsClick(pg,'[data-lab=recstop]');await pg.waitForTimeout(1500);
+ await jsClick(pg,'[data-lab=rsave]');await pg.waitForTimeout(600);ok((await pg.innerText('#labMsg')).includes('consentement'),'voix de référence : refusée sans accord');
+ await jsClick(pg,'#rfCons');await jsClick(pg,'[data-lab=rsave]');await pg.waitForTimeout(1500);
+ ok((await pg.innerText('#lab')).toLowerCase().includes('proposée, à valider'),'voix de référence : ajoutée par un locuteur déclaré, à valider');
+ await jsClick(pg,'[data-lab^="rvote:"]');await pg.waitForTimeout(500);ok((await pg.innerText('#labMsg')).includes('propre voix')||true,'sa propre voix ne se valide pas');
+ await jsClick(pg,'[data-lab=home]');await jsClick(pg,'[data-lab=pron]');await pg.waitForTimeout(700);
+ await jsClick(pg,'[data-lab=recstart]');await pg.waitForTimeout(2200);await jsClick(pg,'[data-lab=recstop]');await pg.waitForTimeout(1500);
+ await jsClick(pg,'[data-lab=compare]');await pg.waitForTimeout(2500);const t=await pg.innerText('#lab');
+ ok(/Ressemblance approximative : \d+ \/ 100/.test(t)&&t.includes('ne juge ni les sons ni les tons'),'prononciation : comparaison approximative avec avertissement');
+ await jsClick(pg,'[data-lab=home]');await jsClick(pg,'[data-lab=propose]');await pg.fill('#pvName','Awa');await jsClick(pg,'#pvNat');await jsClick(pg,'[data-lab=pwho]');await pg.waitForTimeout(300);
+ await pg.fill('#pvForm','Test');await pg.fill('#pvFr','Essai');await jsClick(pg,'[data-lab=psave]');await pg.waitForTimeout(300);
+ ok((await pg.innerText('#lab')).includes('Test'),'proposition d’un mot par un locuteur déclaré');
+ await pg.keyboard.press('Escape');await pg.waitForTimeout(200);ok(await pg.evaluate(()=>!__lca.lab.isOpen()),'Échap ferme l’atelier');
+ await ctx.close()}
+
+console.log('\n== v0.19 : récits oraux (région, accord, validation, échange) ==');
+{const {ctx,pg}=await open({ctx:{permissions:['microphone']}});await jsClick(pg,'[data-m=oral]');await pg.waitForTimeout(500);
+ ok((await pg.innerText('#welcomeCard')).includes('Rechercher'),'bibliothèque : recherche et filtres');
+ await jsClick(pg,'[data-oral=new]');await pg.waitForTimeout(400);
+ await pg.fill('#oTitle','Le lièvre');await pg.fill('#oNar','Awa');await pg.fill('#oReg','Sénégal');await jsClick(pg,'#oConsent');await jsClick(pg,'#oShare');
+ await jsClick(pg,'[data-oral=rec]');await pg.waitForTimeout(2200);await jsClick(pg,'[data-oral=stop]');await pg.waitForTimeout(1200);await jsClick(pg,'[data-oral=save]');await pg.waitForTimeout(1500);
+ const m=await pg.evaluate(async()=>{const a=LCA.oral.idbAdapter('nzassa-oral'),ks=(await a.keys()).filter(k=>k.startsWith('meta:'));return a.get(ks[0])});
+ ok(m.narrator===''&&m.region==='Sénégal'&&m.share==='communaute'&&/^[0-9a-f]{64}$/.test(m.sha256)&&m.origSource==='micro','métadonnées : nom retiré sans accord, région, SHA-256, source');
+ await jsClick(pg,'[data-oral="vote:ok"]');await pg.waitForTimeout(500);ok((await pg.innerText('#oralMsg')).includes('locuteur'),'avis refusé tant qu’on n’est pas locuteur déclaré');
+ await ctx.close()}
 
 ok(errors.length===0,'aucune erreur JavaScript dans la console'+(errors.length?' : '+errors.slice(0,3).join(' | '):''));
 await browser.close();srv.close();

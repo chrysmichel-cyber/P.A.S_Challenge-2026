@@ -21,6 +21,7 @@
 <div id="stage">
   <canvas id="c2d" aria-label="Village peint en 2D"></canvas>
   <canvas id="gl" aria-label="Village virtuel en 3D"></canvas>
+  <canvas id="amb" aria-hidden="true"></canvas>
   <div id="nogl" class="ui" hidden><p class="glass" style="padding:14px 18px">Ton appareil n’affiche pas le monde. Les contes, recettes, traditions et leçons restent disponibles dans le menu du bas.</p></div>
 
   <header id="brand" class="ui glass">
@@ -39,7 +40,11 @@
     <button id="langBtn" class="glass" aria-haspopup="dialog" aria-expanded="false"><span class="dot" id="langDot"></span><span id="langName">Langue</span><small>Carte</small><span aria-hidden="true">🗺</span></button>
   </div></div>
 
-  <div id="mini" class="ui" role="img" aria-label="Carte du village"><canvas width="248" height="248"></canvas><span class="n">N</span><span class="s">S</span><span class="o">O</span><span class="e">E</span></div>
+  <div id="ambHud" class="ui glass" role="status" aria-label="Heure et météo du village"><span id="ambIc" aria-hidden="true"></span><span><b id="ambT"></b><small id="ambW"></small></span></div>
+
+  <div id="hidHud" class="ui glass" role="status" aria-label="Trésors cachés trouvés dans ce village" title="Des trésors sont cachés dans le village : approche-toi des scintillements. La minicarte brille quand tu es près d’un trésor." hidden><span class="gem" aria-hidden="true">✦</span><span><b id="hidN">0/5</b><small>trésors cachés</small></span></div>
+
+  <div id="mini" class="ui" role="button" tabindex="0" aria-expanded="false" aria-label="Carte du village : toucher pour agrandir"><canvas width="248" height="248"></canvas><div id="miniLeg" aria-hidden="true"><span class="l1">Personnages</span><span class="l2">Objets</span><span class="l3">✦ Trésor proche</span></div><span class="n">N</span><span class="s">S</span><span class="o">O</span><span class="e">E</span></div>
 
   <aside id="chat" class="ui glass" hidden aria-label="Discussion du village"><header><b id="chatT">Monde ouvert</b><button id="chatX" type="button" aria-label="Fermer la discussion">×</button></header><details id="chatPlD"><summary id="chatPlS">Joueurs</summary><div id="chatPl"></div></details><div id="chatLog" role="log" aria-live="polite"></div><p id="chatSt" class="chatst" hidden></p><form id="chatF" autocomplete="off"><input id="chatIn" maxlength="200" enterkeyhint="send" placeholder="Écrire un message (texte seulement)…" aria-label="Message"><button class="btn warm sm" type="submit">Envoyer</button></form></aside>
   <div id="joy" class="ui glass" aria-label="Contrôle de déplacement"><i></i></div>
@@ -47,7 +52,9 @@
   <div id="hint" class="ui glass"><span class="k">ZQSD ou flèches pour marcher · glisse pour tourner la vue · E pour parler · M pour le menu</span><span class="t">Joystick pour marcher · glisse pour tourner la vue</span></div>
   <button id="act" class="ui" hidden><span id="actTxt"></span><kbd>E</kbd></button>
 
+  <section id="lab" class="ui" hidden role="dialog" aria-modal="true" aria-label="Atelier de langue"></section>
   <section id="learn" class="ui" hidden role="dialog" aria-modal="true" aria-label="École du village"></section>
+  <section id="elder" class="ui" hidden role="dialog" aria-modal="true" aria-label="Gardien de la mémoire"></section>
 
   <section id="dialog" class="ui glass" hidden aria-live="polite">
     <div class="dhead"><div id="dlgAvatar"></div><div><div id="dlgName"></div><div id="dlgRole"></div></div></div>
@@ -72,6 +79,7 @@
 
   <div id="pause" class="ui" hidden style="inset:0;z-index:35;display:grid;place-items:center;padding:16px;background:rgba(6,16,32,.6)"><div class="glass" style="width:min(360px,100%);padding:20px"><h2 style="margin:0 0 4px;font:800 26px var(--display)">Pause</h2><p class="sub" style="margin:0 0 14px">Ta progression est enregistrée dans ce navigateur.</p><div class="lcards" style="gap:8px"><button class="btn warm" id="pResume" style="flex:none">Reprendre</button><button class="btn" id="pPerso" style="flex:none">Mon personnage</button><button class="btn" id="pLang" style="flex:none">Changer de langue</button><button class="btn ghost" id="pMenu" style="flex:none">Menu principal</button></div><p class="sub" style="margin:14px 0 0;font-size:12px">ZQSD / WASD : marcher · Maj : courir · Espace : sauter · E : parler · M : menu · P : pause</p></div></div>
   <section id="mapov" class="ui" hidden role="dialog" aria-label="Carte de l’Afrique"><div class="mapcard glass"><div class="maphead"><h2>Carte de l’Afrique</h2><button id="mapClose" aria-label="Fermer la carte">×</button></div><div id="mapBody"></div></div></section>
+  <div id="travel" class="ui" role="status" aria-live="polite" aria-hidden="true"><div class="tv-in"><div class="tv-from" id="travelFrom"></div><div class="tv-name" id="travelName"></div><div class="tv-road"><i></i></div><div class="tv-sub">Tu avances vers l’entrée du village…</div></div></div>
   <div id="fade" class="ui" style="inset:0;background:#0b1a33;opacity:0;pointer-events:none;z-index:60"></div>
   <div id="welcome" class="ui"><div class="card glass" id="welcomeCard"></div></div>
 </div>
@@ -91,42 +99,26 @@
 <script src="js/data/sango.js"></script>
 <script src="js/data/tamazight.js"></script>
 <script src="js/data/copte.js"></script>
-<script src="js/data/nubien.js"></script>
 <script src="js/data/yoruba.js"></script>
 <script src="js/data/igbo.js"></script>
-<script src="js/data/ibibio.js"></script>
-<script src="js/data/tiv.js"></script>
 <script src="js/data/hausa.js"></script>
-<script src="js/data/kanuri.js"></script>
 <script src="js/data/fula.js"></script>
-<script src="js/data/songhay.js"></script>
-<script src="js/data/moore.js"></script>
 <script src="js/data/akan.js"></script>
-<script src="js/data/baoule.js"></script>
 <script src="js/data/ewe.js"></script>
 <script src="js/data/arabe.js"></script>
 <script src="js/data/kabyle.js"></script>
 <script src="js/data/shilha.js"></script>
 <script src="js/data/tigrinya.js"></script>
 <script src="js/data/oromo.js"></script>
-<script src="js/data/sidamo.js"></script>
-<script src="js/data/dinka.js"></script>
-<script src="js/data/nuer.js"></script>
-<script src="js/data/kamba.js"></script>
 <script src="js/data/kikuyu.js"></script>
-<script src="js/data/luhya.js"></script>
-<script src="js/data/kalenjin.js"></script>
 <script src="js/data/luo.js"></script>
 <script src="js/data/luganda.js"></script>
 <script src="js/data/kinyarwanda.js"></script>
 <script src="js/data/kirundi.js"></script>
-<script src="js/data/sukuma.js"></script>
 <script src="js/data/malagasy.js"></script>
-<script src="js/data/nande.js"></script>
 <script src="js/data/kituba.js"></script>
 <script src="js/data/tshiluba.js"></script>
 <script src="js/data/umbundu.js"></script>
-<script src="js/data/makhuwa.js"></script>
 <script src="js/data/chewa.js"></script>
 <script src="js/data/bemba.js"></script>
 <script src="js/data/tsonga.js"></script>
@@ -138,6 +130,13 @@
 <script src="js/data/regions.js"></script>
 <script src="js/data/map-africa.js"></script>
 <script src="js/map/layout.js"></script>
+<script src="js/memoire/elder.js"></script>
+<script src="js/rewards/hidden.js"></script>
+<script src="js/life/life.js"></script>
+<script src="js/ambient/ambient.js"></script>
+<script src="js/ambient/climate.js"></script>
+<script src="js/ambient/animals.js"></script>
+<script src="js/kids/kids.js"></script>
 <script src="js/learn/progression.js"></script>
 <script src="js/learn/storage.js"></script>
 <script src="js/account/accounts.js"></script>
@@ -147,6 +146,10 @@
 <script src="js/data/quiz/curriculum.js"></script>
 <script src="js/data/quiz/bank.js"></script>
 <script src="js/learn/ui.js"></script>
+<script src="js/learn/srs.js"></script>
+<script src="js/speech/pron.js"></script>
+<script src="js/speech/refs.js"></script>
+<script src="js/learn/lab.js"></script>
 <script src="js/art2d.js"></script>
 <script src="js/world2d.js"></script>
 <div id="fsGate" hidden role="dialog" aria-modal="true" aria-labelledby="fsT"><div class="fsc"><h2 id="fsT">Jouer en plein écran</h2><p id="fsP">N’Zassa se joue en plein écran sur téléphone et tablette, pour que les commandes et le décor restent visibles. Passe ton téléphone en mode paysage si tu peux.</p><button id="fsGo" class="btn warm" type="button">Passer en plein écran</button><button id="fsSkip" class="btn ghost" type="button" hidden>Continuer quand même</button></div></div>
@@ -155,6 +158,7 @@
 <script src="js/online/world.js"></script>
 <script src="js/perf/quality.js"></script>
 <script src="js/anim/motion.js"></script>
+<script src="js/anim/idle.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

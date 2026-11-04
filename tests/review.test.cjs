@@ -43,3 +43,14 @@ test('R6 : données corrompues : normalisation sans exception',()=>{
  [null,undefined,5,'x',[],{items:5},{items:{wolof:{k:{by:{a:{d:'zzz'}}}}}},{reviewer:{name:'<b>x'},items:{}}].forEach(x=>{const n=R.normalize(x);assert.equal(typeof n.items,'object')});
  const n=R.normalize(JSON.parse(JSON.stringify(Object.assign(R.empty(),{reviewer:{name:'Awa',native:true}}))));assert.equal(n.reviewer.name,'Awa');
 });
+test('propositions de mots : réservées aux locuteurs, sans doublon, jamais ajoutées au jeu, relues par d’autres',()=>{
+ const s=R.empty();
+ assert.equal(R.propose(s,'wolof','x','y').error,'reviewer');R.setReviewer(s,{name:'Aïssa',native:false});assert.equal(R.propose(s,'wolof','x','y').error,'native');
+ R.setReviewer(s,{name:'Aïssa',native:true});assert.equal(R.propose(s,'wolof','',''.trim()).error,'empty');
+ assert.ok(R.propose(s,'wolof','Jërëjëf','Merci',{cat:'salutations'}).ok);assert.equal(R.propose(s,'wolof','jërëjëf','merci').error,'dup');
+ assert.equal(R.proposalsFor(s,'wolof')[0].st.status,'a_verifier');
+ R.setReviewer(s,{name:'Moussa',native:true});R.submit(s,'wolof','Jërëjëf','Merci','ok');R.setReviewer(s,{name:'Awa',native:true});R.submit(s,'wolof','Jërëjëf','Merci','ok');
+ assert.equal(R.proposalsFor(s,'wolof')[0].st.status,'valide');
+ const n=R.normalize(JSON.parse(JSON.stringify(s)));assert.equal(n.props.wolof.length,1);assert.equal(JSON.stringify(R.normalize({props:{a:'x',b:[null,{form:'a'}]}}).props),'{}');
+ R.setReviewer(s,{name:'Aïssa',native:true});const f=R.exportFile(s);assert.equal(f.proposals.length,1);const t=R.empty(),res=R.importFile(t,f);assert.equal(res.proposed,1);assert.equal(t.props.wolof.length,1);
+});

@@ -30,13 +30,13 @@ const clone=o=>JSON.parse(JSON.stringify(o));
 const iso=now=>new Date(now===undefined?Date.now():now).toISOString();
 
 function newProfile(){
- return {v:SCHEMA,xp:0,levelsDone:{},answered:{},lessons:{},badges:{},review:{},journal:{},stats:{answers:0,correct:0,bestStreak:0,perfect:0},settings:{timer:0},session:null};
+ return {v:SCHEMA,xp:0,levelsDone:{},answered:{},lessons:{},studied:{},badges:{},review:{},journal:{},stats:{answers:0,correct:0,bestStreak:0,perfect:0},settings:{timer:0},session:null};
 }
 /* Rend un profil lu sur disque exploitable (champs manquants, types erronés). */
 function normalize(p){
  const b=newProfile();if(!p||typeof p!=='object')return b;
  const o=Object.assign(newProfile(),p);
- ['answered','lessons','badges','review','journal','stats','settings','levelsDone'].forEach(k=>{if(!o[k]||typeof o[k]!=='object'||Array.isArray(o[k]))o[k]=clone(b[k])});
+ ['answered','lessons','studied','badges','review','journal','stats','settings','levelsDone'].forEach(k=>{if(!o[k]||typeof o[k]!=='object'||Array.isArray(o[k]))o[k]=clone(b[k])});
  o.stats=Object.assign(clone(newProfile().stats),o.stats);o.settings=Object.assign({timer:0},o.settings);
  o.xp=Number.isFinite(o.xp)&&o.xp>0?Math.floor(o.xp):0;o.v=SCHEMA;
  if(o.session&&(typeof o.session!=='object'||!Array.isArray(o.session.qids)||!Array.isArray(o.session.results)))o.session=null;
@@ -89,6 +89,10 @@ function startSession(p,lesson,qids,now){
  const s={lid:lesson.id,lang:lesson.lang,review:!!lesson.review,qids:qids.slice(),i:0,results:[],streak:0,xp:0,startedAt:iso(now),finished:false};
  p.session=s;return s;
 }
+/* Apprendre d’abord : une leçon se révise par cartes avant d’être validée par le quiz.
+   Une leçon déjà réussie, ou une séance déjà commencée (anciennes sauvegardes), compte comme étudiée. */
+function studied(p,id){const l=p.lessons&&p.lessons[id];return !!((p.studied&&p.studied[id])||(l&&l.done)||(p.session&&p.session.lid===id&&!p.session.review))}
+function markStudied(p,id,now){if(!p.studied)p.studied={};if(!p.studied[id])p.studied[id]={at:iso(now)};return p.studied[id]}
 function resumable(p,lessonId){return !!(p.session&&p.session.lid===lessonId&&!p.session.finished&&p.session.results.length<p.session.qids.length)}
 
 /* Enregistre une réponse. Idempotent : une question déjà répondue dans la séance renvoie son résultat initial sans rien modifier. */
@@ -152,5 +156,5 @@ function finish(p,ctx,now){
 function abandon(p){/* quitter sans perdre : la séance reste enregistrée pour la reprise */return p.session}
 function dropSession(p){p.session=null}
 
-return {CONFIG,SCHEMA,newProfile,normalize,levelFor,derived,evaluateBadges,lessonState,recommended,passed,startSession,resumable,answer,next,finish,abandon,dropSession};
+return {CONFIG,SCHEMA,newProfile,normalize,levelFor,derived,evaluateBadges,lessonState,recommended,passed,startSession,resumable,studied,markStudied,answer,next,finish,abandon,dropSession};
 });

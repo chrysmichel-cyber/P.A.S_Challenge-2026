@@ -31,3 +31,6 @@ Demander l'accord avant d'enregistrer, surtout pour les personnes âgées ; ne p
 - Unitaires exécutés (`tests/oral.test.cjs`) : nettoyage, validation, création, modification, suppression, isolation par profil, stockage défaillant, export, taille.
 - E2E exécutés (`tests/e2e.mjs`) avec un **faux micro** du navigateur : enregistrement réel, champs obligatoires, relecture, export, persistance après rechargement, suppression, fichier audio et fichier refusé.
 - Non testé : vrai micro, téléphones, navigateurs autres que Chromium, lecture sur Safari/iOS (formats audio différents).
+
+## v0.19
+Champs : région, partage, accord du narrateur (le nom n'est conservé qu'avec accord), nom et source d'origine, SHA-256 de l'audio. Avis de locuteurs déclarés (déclaratif). Export/import `nzassa-oral` v1 (audio en base64). Recherche accent-insensible.

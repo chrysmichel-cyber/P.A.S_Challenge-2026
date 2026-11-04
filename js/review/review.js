@@ -11,7 +11,7 @@ const wkey=(form,fr)=>line(form,120)+'|'+line(fr,160);
 const rkey=n=>line(n,60).toLowerCase();
 const STATUS_LABEL={a_verifier:'À vérifier',en_cours:'Relu une fois',valide:'Validé (déclaratif)',conteste:'En discussion'};
 
-function empty(){return {v:1,reviewer:null,items:{}}}
+function empty(){return {v:1,reviewer:null,items:{},props:{}}}
 function sanitizeReviewer(r){
  if(!r||typeof r!=='object')return null;
  const name=line(r.name,60);if(!name)return null;
@@ -31,6 +31,9 @@ function normalize(raw){
     by[rkey(rk)]={d:x.d,name:line(x.name||rk,60),s:x.d==='fix'?line(x.s,200):'',n:line(x.n,300),at:isFinite(+x.at)?+x.at:0}});
    if(Object.keys(by).length)out[line(k,300)]={by}});
   if(Object.keys(out).length)s.items[line(lang,40)]=out});
+ if(raw.props&&typeof raw.props==='object')Object.keys(raw.props).slice(0,80).forEach(lang=>{const a=raw.props[lang];if(!Array.isArray(a))return;
+  const out=a.slice(0,500).map(x=>x&&typeof x==='object'?{form:line(x.form,120),fr:line(x.fr,160),cat:line(x.cat,40),note:line(x.note,300),by:line(x.by,60),at:isFinite(+x.at)?+x.at:0}:null).filter(x=>x&&x.form&&x.fr&&x.by);
+  if(out.length)s.props[line(lang,40)]=out});
  return s;
 }
 function setReviewer(store,r){const x=sanitizeReviewer(r);if(!x)return {ok:false,error:'name'};store.reviewer=x;return {ok:true,reviewer:x}}
@@ -56,6 +59,18 @@ function mine(store,lang,form,fr){
  const rv=store.reviewer;if(!rv)return null;
  const e=store.items[lang]&&store.items[lang][wkey(form,fr)];return e&&e.by[rkey(rv.name)]||null;
 }
+/* Propositions de nouveaux mots par des locuteurs. Elles ne sont JAMAIS ajoutées au jeu automatiquement : un mainteneur les reprend après validation. */
+function propose(store,lang,form,fr,o){
+ o=o||{};const rv=store.reviewer;
+ if(!rv||!rv.name)return {ok:false,error:'reviewer'};if(!rv.native)return {ok:false,error:'native'};
+ const f=line(form,120),t=line(fr,160);if(!f||!t)return {ok:false,error:'empty'};
+ const L=store.props[lang]||(store.props[lang]=[]);
+ if(L.some(x=>x.form.toLowerCase()===f.toLowerCase()&&x.fr.toLowerCase()===t.toLowerCase()))return {ok:false,error:'dup'};
+ if(L.length>=500)return {ok:false,error:'toomany'};
+ L.push({form:f,fr:t,cat:line(o.cat,40),note:line(o.note,300),by:rv.name,at:o.now||Date.now()});
+ /* la personne qui propose confirme sa propre forme : c'est une voix, pas une validation ; les autres relecteurs jugent */
+ return {ok:true,status:statusOf(store,lang,f,t)}}
+function proposalsFor(store,lang){return (store.props[lang]||[]).map(x=>Object.assign({},x,{st:statusOf(store,lang,x.form,x.fr)}))}
 /* Bilan d'une langue : words = [[cat,forme,fr,...]]. */
 function summary(store,lang,words){
  const c={a_verifier:0,en_cours:0,valide:0,conteste:0,total:words.length};
@@ -72,7 +87,8 @@ function exportFile(store,langs,now){
  Object.keys(store.items).forEach(lang=>{if(langs&&langs.indexOf(lang)<0)return;
   Object.keys(store.items[lang]).forEach(k=>{const x=store.items[lang][k].by[rkey(rv.name)];if(!x)return;
    const i=k.indexOf('|');out.push({lang,form:k.slice(0,i),fr:k.slice(i+1),decision:x.d,suggestion:x.s,note:x.n,at:x.at})})});
- return {format:'nzassa-review',version:1,exportedAt:new Date(now||Date.now()).toISOString(),reviewer:{name:rv.name,native:rv.native,qualification:rv.qualification},declaredOnly:true,items:out};
+ const proposals=[];Object.keys(store.props||{}).forEach(lang=>{if(langs&&langs.indexOf(lang)<0)return;store.props[lang].forEach(x=>{if(rkey(x.by)===rkey(rv.name))proposals.push(Object.assign({lang},x))})});
+ return {format:'nzassa-review',version:1,exportedAt:new Date(now||Date.now()).toISOString(),reviewer:{name:rv.name,native:rv.native,qualification:rv.qualification},declaredOnly:true,items:out,proposals};
 }
 /* Fusionne un fichier reçu (mainteneur). Rejette tout ce qui est mal formé ; n'applique aucune correction au contenu. */
 function importFile(store,obj){
@@ -86,7 +102,8 @@ function importFile(store,obj){
   if(!it||typeof it.lang!=='string'||typeof it.form!=='string'||typeof it.fr!=='string'){res.skipped++;return}
   const r=submit(store,line(it.lang,40),it.form,it.fr,it.decision,{suggestion:it.suggestion,note:it.note,now:isFinite(+it.at)?+it.at:undefined});
   if(r.ok)res.added++;else res.skipped++});
+ (Array.isArray(obj.proposals)?obj.proposals.slice(0,500):[]).forEach(x=>{if(!x||typeof x.lang!=='string')return;const r=propose(store,line(x.lang,40),x.form,x.fr,{cat:x.cat,note:x.note,now:isFinite(+x.at)?+x.at:undefined});if(r.ok)res.proposed=(res.proposed||0)+1});
  store.reviewer=keep;return res;
 }
-return {REQUIRED,DECISIONS,STATUS_LABEL,empty,normalize,sanitizeReviewer,setReviewer,submit,statusOf,mine,summary,exportFile,importFile,wkey};
+return {REQUIRED,DECISIONS,STATUS_LABEL,empty,normalize,sanitizeReviewer,setReviewer,submit,propose,proposalsFor,statusOf,mine,summary,exportFile,importFile,wkey};
 });

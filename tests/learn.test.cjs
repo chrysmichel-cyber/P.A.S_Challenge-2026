@@ -23,7 +23,7 @@ test('contenu non validé : toutes les questions sont marquées provisoires, auc
  Object.values(LCA.langs).forEach(L=>Object.values(QZ.allQuestions(L)).forEach(q=>assert.equal(QZ.isAuthentic(q),false,q.id)));
 });
 test('leçons : une catégorie trop pauvre est « à compléter » (jamais remplie par invention)',()=>{
- const c=QZ.curriculumFor(LCA.langs.nubien);assert.equal(c.lessons.length,0);
+ const c=QZ.curriculumFor(LCA.langs.umbundu);assert.equal(c.lessons.length,0);
  const k=QZ.curriculumFor(LCA.langs.copte);assert.equal(k.lessons.map(x=>x.key).join(),'recettes');/* seule la recette du jeu permet une leçon */
 });
 test('4 : bonne réponse au premier essai = 10 XP, et le résultat ne change pas si on revalide',()=>{
@@ -177,7 +177,7 @@ test('N5 : « recettes » : aucune mauvaise proposition ne partage un mot avec l
   q.options.filter(o=>o.id!==q.answer).forEach(o=>assert.ok(!toks(o.text).some(t=>mine[t]),q.id+' '+o.text))});
 });
 test('N6 : langues pauvres : leçons avancées « à compléter », jamais inventées',()=>{
- assert.equal(QZ.curriculumFor(LCA.langs.ibibio).lessons.length,0);
+ assert.equal(QZ.curriculumFor(LCA.langs.kituba).lessons.length,0);
  assert.equal(lessonOf(LCA.langs.kabyle,'defi')===undefined,false?false:lessonOf(LCA.langs.kabyle,'defi')===undefined);
  const c=QZ.curriculumFor(LCA.langs.tsonga);assert.ok(c.levels[2].lessons.every(l=>!l.available));
  assert.ok(QZ.curriculumFor(LCA.langs.wolof).levels[2].lessons.every(l=>l.available));

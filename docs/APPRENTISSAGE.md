@@ -48,3 +48,6 @@ Clé `lca-v2`, schéma version 3 (`learn` ajouté). Une sauvegarde v2 est lue te
 - Récompenses : XP habituel, **bonus de 50 XP** une fois quand toutes les leçons disponibles d'un niveau ≥ 2 sont réussies dans une langue, badges `niveau_3` et `niveau_4`.
 - Progression sauvegardée (schéma v5) avec migration des anciennes sauvegardes.
 - Contenus provisoires : les questions reposent sur des données non validées (voir VALIDATION.md).
+
+## v0.19 — Atelier de langue
+Révision par boîtes (10 min, 1 j, 3 j, 7 j, 16 j, 35 j), carnet, prononciation approximative (enveloppe d'énergie, hauteur, DTW), voix de référence (locuteur natif consentant, 2 avis d'autres locuteurs = « validée » déclarative), propositions de mots (jamais intégrées automatiquement).

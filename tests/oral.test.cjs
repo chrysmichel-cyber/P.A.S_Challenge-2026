@@ -54,3 +54,27 @@ test('O6 : export texte : statut et avertissement honnêtes',()=>{
 test('O7 : fichier trop lourd refusé',async()=>{
  const s=mk();de((await s.create(ok,{blob:{size:O.MAX_BYTES+1},type:'audio/mpeg'})).errors,['toobig']);
 });
+test('v0.19 : narrateur non indiqué sans accord, région, métadonnées d’origine conservées',async()=>{
+ const st=O.create({adapter:O.memAdapter(),profile:'p',langs:{wolof:1}});
+ const r=await st.create({title:'Conte',lang:'wolof',narrator:'Awa',narratorOk:false,region:'Sénégal',consent:true,origName:'micro.webm',origSource:'micro',sha256:'a'.repeat(64),share:'communaute'},{blob:{size:10},type:'audio/webm'});
+ assert.ok(r.ok);assert.equal(r.meta.narrator,'','nom retiré sans accord');assert.equal(r.meta.region,'Sénégal');assert.equal(r.meta.origName,'micro.webm');assert.equal(r.meta.sha256,'a'.repeat(64));
+ const u=await st.update(r.meta.id,{title:'Conte 2',sha256:'b'.repeat(64),origName:'x'});assert.equal(u.meta.sha256,'a'.repeat(64),'l’empreinte de l’original ne change pas');assert.equal(u.meta.origName,'micro.webm');
+ assert.equal(O.sanitize({narrator:'Awa'}).narratorOk,true,'anciens récits : nom conservé');
+});
+test('v0.19 : validation communautaire (2 locuteurs distincts, relu, partagé, pas de contestation)',()=>{
+ let m=O.sanitize({title:'T',lang:'wolof',consent:true,share:'communaute',status:'relu',reviewer:'X',narrator:'Awa',narratorOk:true});
+ assert.equal(O.communityStatus(m).id,'a_valider');
+ assert.equal(O.vote(m,{name:'A',native:false},'ok').error,'native');assert.equal(O.vote(m,{name:'Awa',native:true},'ok').error,'self');assert.equal(O.vote(O.sanitize({title:'T'}),{name:'A',native:true},'ok').error,'private');
+ let v=O.vote(m,{name:'Moussa',native:true},'ok');m=Object.assign({},m,{votes:v.votes});assert.equal(O.communityStatus(m).id,'a_valider');
+ v=O.vote(m,{name:'moussa',native:true},'ok');assert.equal(Object.keys(v.votes).length,1,'un seul avis par personne');
+ v=O.vote(m,{name:'Fatou',native:true},'ok');m=Object.assign({},m,{votes:v.votes});assert.equal(O.communityStatus(m).id,'valide');assert.ok(O.communityStatus(m).publishable);
+ v=O.vote(m,{name:'Ibou',native:true},'bad','faux');m=Object.assign({},m,{votes:v.votes});assert.equal(O.communityStatus(m).id,'conteste');assert.ok(!O.communityStatus(m).publishable);
+ assert.equal(O.communityStatus(Object.assign({},m,{share:'prive'})).id,'prive');
+});
+test('v0.19 : bibliothèque (recherche, filtres) et paquet d’échange',()=>{
+ const a=O.sanitize({title:'Le lièvre',lang:'wolof',region:'Sénégal',transcript:'il était',consent:true,narrator:'Awa',narratorOk:false}),b=O.sanitize({title:'La pluie',lang:'bambara',region:'Mali',consent:true});
+ assert.equal(O.search([a,b],{q:'lievre'}).length,1,'sans accent');assert.equal(O.search([a,b],{lang:'bambara'}).length,1);assert.equal(O.search([a,b],{region:'mali'}).length,1);assert.equal(O.search([a,b],{q:'awa'}).length,0,'le nom non consenti n’est pas cherchable');
+ const bun=O.toBundle(Object.assign({},a,{narrator:'Awa'}),'QUJDREVGR0g=','audio/webm');assert.equal(bun.meta.narrator,'','le paquet respecte le refus de nommer');
+ const r=O.fromBundle(JSON.parse(JSON.stringify(bun)));assert.ok(r.ok&&r.meta.imported);
+ assert.equal(O.fromBundle({format:'x'}).error,'format');assert.equal(O.fromBundle(Object.assign({},bun,{meta:Object.assign({},bun.meta,{consent:false})})).error,'consent');assert.equal(O.fromBundle(Object.assign({},bun,{audio:{type:'a',b64:'<script>'}})).error,'audio');
+});

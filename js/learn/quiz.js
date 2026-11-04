@@ -138,6 +138,21 @@ function gen(L,lesson){
 }
 function generate(L,lesson){return gen(L,lesson)}
 
+/* Cartes d’étude d’une leçon : uniquement le contenu déjà présent dans les données de la langue (rien n’est ajouté).
+   Chaque carte : {big, small, say, wo} — « wo » sert à marquer le mot comme appris. */
+function studyFor(L,lesson){
+ const kind=lesson.kind||'words',cards=[];
+ const wc=(W,max)=>W.slice(0,max||14).forEach(w=>cards.push({big:w.wo,small:w.fr,say:w.wo,wo:w.wo}));
+ if(kind==='words')wc(wordsOf(L,lesson.cat));
+ else if(kind==='phrases')wc(wordsOf(L,'s').filter(w=>/\s|\?/.test(w.wo)));
+ else if(kind==='numbers')wordsOf(L,'c').forEach((w,i)=>cards.push({big:w.wo,small:String(i+1)+' · '+w.fr,say:w.wo,wo:w.wo}));
+ else if(kind==='scenario')wc(wordsOf(L,lesson.cat));
+ else if(kind==='odd'||kind==='mixed')['f','m','n','s','c'].forEach(k=>wc(wordsOf(L,k),3));
+ else if(kind==='tales')(L.tales||[]).forEach(t=>{(t.vocab||[]).forEach(v=>cards.push({big:String(v[0]),small:String(v[1])+' · conte « '+t.title+' »',say:String(v[0]),wo:String(v[0])}));if(t.moral)cards.push({big:t.title,small:'Morale : '+t.moral,say:'',wo:''})});
+ else if(kind==='recipes')(L.recipes||[]).forEach(r=>cards.push({big:r.name,small:'Ingrédients : '+(r.ing||[]).map(i=>String(i[0])).join(', '),say:'',wo:''}));
+ return {title:lesson.title,kind,cards};
+}
+
 /* Questions d’une leçon : banque explicite, sinon génération. Sélection déterministe de 10 au plus. */
 function questionsFor(L,lesson){
  const ex=bank().filter(q=>q.lang===L.id&&q.lesson===lesson.key);
@@ -161,5 +176,5 @@ function validateQuestion(q){
   if(ids.indexOf(q.answer)<0)e.push('la bonne réponse n’est pas dans les propositions')}
  return e;
 }
-return {MIN_WORDS,LESSON_LEN,curriculumFor,questionsFor,allQuestions,generate,wordsOf,validateQuestion,isAuthentic,hash,rng,slug};
+return {MIN_WORDS,LESSON_LEN,studyFor,curriculumFor,questionsFor,allQuestions,generate,wordsOf,validateQuestion,isAuthentic,hash,rng,slug};
 });

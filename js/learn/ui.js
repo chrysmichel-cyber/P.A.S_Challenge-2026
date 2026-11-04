@@ -2,7 +2,7 @@
    Toute la logique (XP, séries, badges, déblocage) reste dans progression.js ; ce fichier ne fait qu’afficher et relayer les clics. */
 (function(LCA){
 'use strict';
-const PR=LCA.progress,QZ=LCA.quiz;
+const PR=LCA.progress,QZ=LCA.quiz,KD=LCA.kids||{emojiFor:()=>'',twoOptions:q=>q.options,praise:()=>'Bravo !',tryAgain:()=>'Presque !',stars:()=>1};
 const ICON={
  book:'<path d="M12 6c-2-1.6-5-2-9-1.5v14c4-.5 7 0 9 1.5 2-1.5 5-2 9-1.5v-14C17 4 14 4.4 12 6zM12 6v14"/>',
  check:'<circle cx="12" cy="12" r="9"/><path d="M7.5 12.5l3 3 6-7"/>',
@@ -20,10 +20,11 @@ const TIMER_S=20;
 
 function create(ctx){
  const $=ctx.$,esc=ctx.esc,root=$('#learn');
- let view='hub',sel=null,validated=null,tmr=null,tLeft=0,lastResult=null,lastSummary=null,open=false,hubLang=null;
+ let view='hub',stLid=null,stI=0,stSeen={},sel=null,validated=null,tmr=null,tLeft=0,lastResult=null,lastSummary=null,open=false,hubLang=null;
  const cache={};
  const prof=()=>{const s=ctx.state();if(!s.learn||!s.learn.v)s.learn=PR.normalize(s.learn);return s.learn};
  const L0=()=>ctx.lang();
+ const kids=()=>!!(ctx.kids&&ctx.kids());
  const qmap=L=>cache[L.id]||(cache[L.id]=QZ.allQuestions(L));
  const lessonsOf=L=>QZ.curriculumFor(L).lessons;
  const wordsLearned=()=>{let n=0;const d=ctx.state().d;Object.keys(d).forEach(k=>{n+=Object.keys((d[k]&&d[k].learned)||{}).length});return n};
@@ -47,7 +48,7 @@ function create(ctx){
  /* ---------- hub : choix de la leçon ---------- */
  function hubHtml(){
   const p=prof(),L=LANGS_get(hubLang||L0().id),cur=QZ.curriculumFor(L),rec=PR.recommended(p,cur.lessons);
-  let h=topbar('École du village')+'<div class="lbody">'+'<p class="sub">Langue étudiée : <b>'+esc(L.name)+'</b>. Termine une leçon avec au moins '+Math.round(PR.CONFIG.passRate*100)+' % de bonnes réponses pour ouvrir la suivante.</p>'+levelBar(p);
+  let h=topbar('École du village')+'<div class="lbody">'+'<p class="sub">Langue étudiée : <b>'+esc(L.name)+'</b>. On apprend d’abord avec les cartes, puis un quiz valide la leçon : au moins '+Math.round(PR.CONFIG.passRate*100)+' % de bonnes réponses ouvrent la suivante.</p>'+levelBar(p);
   if(p.session&&!p.session.finished){const sl=LANGS_get(p.session.lang);h+='<div class="resume"><span>Leçon en cours : <b>'+esc(titleOf(p.session))+'</b> ('+p.session.results.length+'/'+p.session.qids.length+')</span><button class="btn warm sm" data-a="resume">Reprendre</button></div>'}
   cur.levels.forEach(lv=>{
    h+='<h3 class="lvt"><span>Niveau '+lv.n+'</span> '+esc(lv.title)+'</h3>';
@@ -57,7 +58,7 @@ function create(ctx){
     const pc=rec2&&rec2.done?Math.round(rec2.best*100):0;
     let side='';
     if(st==='locked')side=svg('lock','lk');else if(st==='todo')side='';
-    else side='<button class="btn '+(rec&&rec.id===ls.id?'warm':'ghost')+' sm" data-a="start" data-id="'+esc(ls.id)+'">'+(PR.resumable(p,ls.id)?'Reprendre':(rec2&&rec2.done?'Rejouer':'Commencer'))+'</button>';
+    else side='<button class="btn '+(rec&&rec.id===ls.id?'warm':'ghost')+' sm" data-a="start" data-id="'+esc(ls.id)+'">'+(PR.resumable(p,ls.id)?'Reprendre le quiz':(rec2&&rec2.done?'Rejouer':(PR.studied(p,ls.id)?'Passer le quiz':'Apprendre')))+'</button>';
     h+='<div class="lc '+st+'"><div><b>'+esc(ls.title)+'</b><small>'+(st==='todo'?(ls.kind==='words'?'À compléter : seulement '+ls.words+' mot(s) documenté(s) en '+esc(L.name)+' (minimum '+QZ.MIN_WORDS+').':'À compléter : cette leçon demande '+esc(ls.needs||'plus de contenu documenté')+'. Rien n’est inventé pour la remplir.'):st==='locked'?'Verrouillée : réussis d’abord la leçon précédente.':ls.count+' questions'+(rec2&&rec2.done?' · meilleur score '+pc+' %'+(rec2.perfect?' · parfaite':''):''))+'</small></div>'+side+'</div>'});
   });
   const rn=Object.keys(p.review).filter(id=>id.indexOf(L.id+'.')===0&&qmap(L)[id]).length;
@@ -66,10 +67,38 @@ function create(ctx){
  const LANGS_get=id=>ctx.langs()[id]||L0();
  const titleOf=s=>{if(s.review)return 'Révision';const L=LANGS_get(s.lang),ls=lessonsOf(L).find(x=>x.id===s.lid);return ls?ls.title:s.lid};
 
+ /* ---------- étude : apprendre avant de valider ---------- */
+ function studyData(){const L=LANGS_get(stLid.split(':')[0]),ls=lessonsOf(L).find(x=>x.id===stLid);return ls?{L,ls,st:QZ.studyFor(L,ls)}:null}
+ function studyHtml(){
+  const d=stLid&&studyData();if(!d||!d.st.cards.length)return topbar('Apprendre')+'<div class="lbody"><p class="err">Aucune carte à étudier pour cette leçon.</p><button class="btn warm" data-a="hub">Retour</button></div>';
+  const cards=d.st.cards,c=cards[stI],last=stI>=cards.length-1,seen=Object.keys(stSeen).length;
+  let h=topbar('Apprendre : '+esc(d.ls.title),'hub')+'<div class="lbody study">'+provisional({validation:d.L.status||'brouillon'})+
+   '<div class="sdots" aria-hidden="true">'+cards.map((x,k)=>'<i class="'+(k===stI?'cur':stSeen[k]?'on':'')+'"></i>').join('')+'</div>'+
+   '<div class="scard'+(kids()?' kid':'')+'" role="group" aria-label="Carte '+(stI+1)+' sur '+cards.length+'"><small>Carte '+(stI+1)+'/'+cards.length+'</small>'+(kids()&&KD.emojiFor(c.small.split(' · ').pop())?'<div class="semo" aria-hidden="true">'+KD.emojiFor(c.small.split(' · ').pop())+'</div>':'')+'<div class="sbig">'+esc(c.big)+(c.say?'<button class="spk2" data-a="ssay" aria-label="Écouter">'+svg('speaker')+'</button>':'')+'</div><div class="ssm">'+esc(c.small)+'</div></div>'+
+   '<div class="lrow"><button class="btn ghost" data-a="sprev"'+(stI?'':' disabled')+'>Précédent</button>'+(last?'<button class="btn warm" data-a="sdone">'+(seen>=cards.length?'J’ai appris : passer au quiz':'Encore '+(cards.length-seen)+' carte(s) à voir')+'</button>':'<button class="btn warm" data-a="snext">Suivant</button>')+'</div>'+
+   '<p class="sub">Le quiz sert à valider ce que tu viens d’apprendre. Tu peux revenir ici quand tu veux.</p></div>';
+  return h}
+ function openStudy(id){stLid=id;stI=0;stSeen={};show('study');studySay()}
+ function studySay(){const d=stLid&&studyData();if(!d)return;const c=d.st.cards[stI];if(c){stSeen[stI]=1;if(c.wo&&ctx.learnWord)ctx.learnWord(d.L,{text:c.wo});if(c.say)ctx.say(c.say)}}
+
  /* ---------- quiz ---------- */
  function curQ(){const p=prof(),s=p.session;if(!s)return null;const L=LANGS_get(s.lang);return {q:qmap(L)[s.qids[s.i]],L,s,p}}
+ function kidQuizHtml(c){
+  const {q,s}=c,n=s.i+1,tot=s.qids.length,done=validated!==null||s.results.length>s.i,res=done?s.results[s.i]:null,em=t=>KD.emojiFor(t);
+  const opts=KD.twoOptions(q),right=q.options.find(o=>o.id===q.answer);
+  let h=topbar(esc(titleOf(s)))+'<div class="lbody kq"><div class="bar" aria-label="Question '+n+' sur '+tot+'"><i style="width:'+Math.round((s.results.length/tot)*100)+'%"></i></div>'+
+   '<div class="kword">'+(em(q.text)?'<span class="semo" aria-hidden="true">'+em(q.text)+'</span>':'')+'<b id="qtext">'+esc(q.text)+'</b>'+(q.say?'<button class="spk2 big" data-a="say" aria-label="Écouter">'+svg('speaker')+'</button>':'')+'</div>'+
+   '<p class="kprompt">'+(q.say?'Écoute, puis touche la bonne réponse.':'Touche la bonne réponse.')+'</p><div class="kopts" role="group" aria-label="Réponses">';
+  opts.forEach(o=>{let cls='';if(done){if(o.id===q.answer)cls=' ok';else if(res.sel===o.id)cls=' soft'}
+   h+='<button class="kopt'+cls+'" data-a="pick" data-o="'+o.id+'"'+(done?' disabled':'')+'>'+(em(o.text)?'<span class="semo" aria-hidden="true">'+em(o.text)+'</span>':'')+'<b>'+esc(o.text)+'</b></button>'});
+  h+='</div>';
+  if(done){const last=s.i+1>=tot;
+   h+='<div class="kfb '+(res.ok?'good':'soft')+'" role="status"><b>'+(res.ok?KD.praise(s.i)+' ⭐':KD.tryAgain(s.i))+'</b>'+(res.ok?'':'<p>La bonne réponse : '+(em(right.text)||'')+' <b>'+esc(right.text)+'</b></p>')+'</div>'+
+    '<button class="btn warm lgo kbig" data-a="next">'+(last?'Voir mes étoiles':'Suivant')+' ➜</button>'}
+  return h+'</div>'}
  function quizHtml(){
   const c=curQ();if(!c)return hubHtml();
+  if(c.q&&kids())return kidQuizHtml(c);
   const {q,s,p}=c;
   if(!q)return topbar('Leçon indisponible')+'<div class="lbody"><p class="err">Cette question n’est plus disponible (le contenu a changé). Ta progression est conservée.</p><button class="btn warm" data-a="hub">Retour</button></div>';
   const n=s.i+1,tot=s.qids.length,done=validated!==null||s.results.length>s.i;
@@ -97,7 +126,7 @@ function create(ctx){
   const sm=lastSummary,p=prof();if(!sm)return hubHtml();
   const cur=QZ.curriculumFor(LANGS_get(lastSummary.lang||L0().id)),rec=sm.review?null:PR.recommended(p,cur.lessons);
   const pct=sm.total?Math.round(sm.score/sm.total*100):0;
-  let h=topbar(sm.review?'Révision terminée':'Leçon terminée')+'<div class="lbody res"><div class="score">'+sm.score+' / '+sm.total+'</div><p class="sub">'+(sm.perfect?'Réussite parfaite ! Un badge t’attend.':pct>=PR.CONFIG.passRate*100?'Bravo, tu as réussi la leçon.':'Tu peux la rejouer pour progresser et ouvrir la suite.')+'</p>';
+  let h=topbar(sm.review?'Révision terminée':'Leçon terminée')+'<div class="lbody res">'+(kids()?'<div class="kstars" role="img" aria-label="'+KD.stars(sm.score,sm.total)+' étoile(s)">'+'⭐'.repeat(KD.stars(sm.score,sm.total))+'</div>':'')+'<div class="score">'+sm.score+' / '+sm.total+'</div><p class="sub">'+(sm.perfect?'Réussite parfaite ! Un badge t’attend.':pct>=PR.CONFIG.passRate*100?'Bravo, tu as réussi la leçon.':'Tu peux la rejouer pour progresser et ouvrir la suite.')+'</p>';
   h+='<div class="xpbox"><b>+'+(sm.xpSession)+' XP</b><small>'+(sm.xpBonus?'dont '+sm.xpBonus+' XP de bonus de leçon'+((sm.events||[]).filter(e=>e.type==='level').map(e=>' et de niveau '+e.n+' terminé')[0]||''):'Aucun point de leçon supplémentaire : déjà obtenu')+'</small></div>'+levelBar(p);
   if(sm.newBadges.length)h+=badgePop(sm.newBadges);
   if(sm.unlockedJournal)h+='<div class="bpop">'+svg('book')+'<span>Nouvelle page dans ton journal : <b>'+esc(sm.title||'')+'</b></span></div>';
@@ -124,7 +153,7 @@ function create(ctx){
 
  function render(){
   let h;
-  if(view==='quiz')h=quizHtml();else if(view==='result')h=resultHtml();else if(view==='dash')h=dashHtml();else h=hubHtml();
+  if(view==='study')h=studyHtml();else if(view==='quiz')h=quizHtml();else if(view==='result')h=resultHtml();else if(view==='dash')h=dashHtml();else h=hubHtml();
   root.innerHTML='<div class="lcard">'+h+'</div>';
   root.querySelector('.lbody')&&(root.querySelector('.lbody').scrollTop=0);
   if(view==='quiz')armTimer();
@@ -141,6 +170,7 @@ function create(ctx){
   const L=LANGS_get(id.split(':')[0]);const cur=QZ.curriculumFor(L),ls=cur.lessons.find(x=>x.id===id),p=prof();
   if(!ls){ctx.toast('Cette leçon n’est pas disponible.');return}
   if(PR.lessonState(p,cur.lessons,id)==='locked'){ctx.toast('Leçon verrouillée : réussis d’abord la précédente.');return}
+  if(!PR.studied(p,id)){openStudy(id);return}/* apprendre d’abord */
   if(!PR.resumable(p,id)){const qs=QZ.questionsFor(L,ls);if(qs.length<1){ctx.toast('Contenu pédagogique indisponible.');return}PR.startSession(p,ls,qs.map(q=>q.id))}
   persist();tLeft=TIMER_S;lastResult=null;show('quiz');quizSay();
  }
@@ -174,9 +204,13 @@ function create(ctx){
   else if(a==='hub')show('hub');
   else if(a==='dash')show('dash');
   else if(a==='start')startLesson(b.dataset.id);
+  else if(a==='snext'){const d=studyData();if(d&&stI<d.st.cards.length-1){stI++;render();studySay()}}
+  else if(a==='sprev'){if(stI>0){stI--;render();studySay()}}
+  else if(a==='ssay'){const d=studyData();if(d&&d.st.cards[stI]&&d.st.cards[stI].say)ctx.say(d.st.cards[stI].say)}
+  else if(a==='sdone'){const d=studyData();if(d&&Object.keys(stSeen).length>=d.st.cards.length){PR.markStudied(prof(),stLid,Date.now());persist();startLesson(stLid)}else ctx.toast('Regarde toutes les cartes avant le quiz.')}
   else if(a==='resume'){const s=prof().session;if(s){tLeft=TIMER_S;show('quiz');quizSay()}}
   else if(a==='review')startReview();
-  else if(a==='pick'){const c=curQ();if(c&&c.s.results.length<=c.s.i&&validated===null){sel=b.dataset.o;render()}}
+  else if(a==='pick'){const c=curQ();if(c&&c.s.results.length<=c.s.i&&validated===null){if(kids()){submit(b.dataset.o)}else{sel=b.dataset.o;render()}}}
   else if(a==='ok'){if(sel)submit(sel)}
   else if(a==='next')next();
   else if(a==='timer'){const p=prof();p.settings.timer=p.settings.timer?0:1;tLeft=TIMER_S;persist();render()}
@@ -193,7 +227,7 @@ function create(ctx){
   if(!cur.lessons.length){show('hub');return}
   if(rec)startLesson(rec.id);else show('hub');
  }
- return {openHub,openDash,startRecommended,isOpen,close,_state:()=>({view,sel,validated})};
+ return {openHub,openDash,startRecommended,isOpen,close,_state:()=>({view,sel,validated,stLid,stI})};
 }
 LCA.learnUI={create};
 })(window.LCA=window.LCA||{});
