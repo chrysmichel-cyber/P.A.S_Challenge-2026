@@ -744,3 +744,61 @@ button:not(:disabled):active,.btn:active,.mbtn:active,.tile:active{transform:sca
 #lab .nbrow{display:grid;gap:6px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.1)}#lab .nbrow input,#lab select{width:100%;padding:8px;border-radius:10px;border:1px solid var(--line);background:rgba(0,0,0,.25);color:inherit;font:inherit}
 #lab .labres{background:rgba(255,255,255,.07);border-radius:14px;padding:12px;margin:10px 0;display:grid;gap:6px}#lab .labres ul{margin:4px 0 0 18px;padding:0}
 #lab .labsel{display:grid;gap:4px;margin:8px 0}
+
+/* ===== v0.19.1 : mobile en paysage (hauteur ≤ 480 px) — HUD compact, sans chevauchements ===== */
+@media (orientation:landscape) and (max-height:480px){
+  :root{--gb:max(8px,env(safe-area-inset-bottom,0px))}
+  /* haut : mission à gauche, boutons à droite */
+  #quest{top:8px;width:min(250px,calc(100% - var(--gx) - var(--gr) - 270px));padding:5px 9px;gap:8px;border-radius:16px}
+  #quest b{font-size:13px}#quest i{font-size:11px}#quest .qb{margin-top:3px;height:4px}
+  /* colonne de droite : minicarte, heure/météo, trésors, empilés et compacts */
+  #mini{top:56px;width:76px;height:76px}
+  #ambHud{top:138px;padding:3px 8px;gap:6px;border-radius:12px;font-size:11px;line-height:1.15}
+  #ambHud b{font-size:12px}#ambHud small,#ambHud span{font-size:10.5px}
+  #hidHud{top:176px;padding:3px 8px;gap:6px;border-radius:12px;font-size:11px;line-height:1.15}
+  #hidHud b{font-size:12px}#hidHud small,#hidHud span{font-size:10.5px}
+  #mini.big{width:min(220px,66vh);height:min(220px,66vh)}
+  #mini.big #miniLeg{top:50%;left:auto;right:calc(100% + 8px);transform:translateY(-50%);flex-direction:column;align-items:flex-start;gap:4px;white-space:normal;max-width:150px}
+  /* bas : barre fine entre les deux manettes */
+  #dock{width:min(380px,calc(100% - 230px));padding:3px;gap:2px;border-radius:18px}
+  #dock button,body.kids #dock button{min-height:38px!important;padding:4px 2px}
+  #dock button svg,body.kids #dock svg{width:20px;height:20px}
+  #dock button[aria-pressed=true]::after{bottom:1px;height:2px;width:14px}
+  #joy,#joyc{bottom:calc(var(--gb) + 4px);width:84px;height:84px}
+  #joy i,#joyc i{transform:scale(.85)}
+  #joyc::after{display:none}
+  #act{bottom:calc(var(--gb) + 56px);right:var(--gr);left:auto;transform:none}
+  body.m3d #act{right:calc(var(--gr) + 4px);bottom:calc(var(--gb) + 96px)}
+  /* messages : au-dessus de la barre, jamais sur la mission ni les boutons */
+  #toast{top:auto;bottom:calc(var(--gb) + 50px);max-width:min(440px,calc(100% - 260px));padding:6px 14px;font-size:12px;line-height:1.3;border-radius:14px}
+  /* panneaux : à droite, sous les boutons, au-dessus de la barre */
+  #panel{top:54px;bottom:calc(var(--gb) + 48px);width:min(400px,54vw);border-radius:18px}
+  body:has(#panel:not([hidden])) #mini,body:has(#panel:not([hidden])) #ambHud,body:has(#panel:not([hidden])) #hidHud{display:none}
+  body:has(#panel:not([hidden])) #joyc{display:none!important}
+  #dialog{max-height:calc(100dvh - 16px)}
+  /* atelier et autres écrans plein cadre */
+  #lab{padding:6px}#lab .lcard{padding:10px 14px;border-radius:16px}
+  #lab .lhd{margin-bottom:4px}
+  #lab .labstats{grid-template-columns:repeat(6,1fr);gap:5px;margin:4px 0}#lab .labstats>div{padding:4px}
+  #lab .labgrid{grid-template-columns:1fr 1fr;gap:6px;margin:6px 0}
+  #lab .labcard{padding:8px;margin:4px 0}#lab .labcard .big{font-size:1.2rem}
+  #learn .lcard,#elder .elcard{max-height:100dvh}
+  #chat{top:8px;width:min(340px,46vw);max-height:calc(100dvh - 70px)}
+}
+@media (orientation:landscape) and (max-height:380px){
+  #ambHud{display:none}#hidHud{top:138px}
+  #mini{top:52px;width:68px;height:68px}
+}
+@media (orientation:landscape) and (max-height:480px){
+  #topr button,#topr .tb{min-height:40px!important;min-width:40px;height:40px}
+  #topr .tb svg,#topr button svg{width:20px;height:20px}
+  /* accueil et fiches : bannière réduite, contenu défilable, grilles à 4 colonnes */
+  .hbanner{aspect-ratio:auto;height:min(30vh,112px);border-radius:14px}
+  .hbanner img{object-position:50% 45%}
+  .hm-stats{gap:6px}.hm-stats>*{padding:5px 4px}.hm-stats b{font-size:17px}
+  .hm-tiles{grid-template-columns:repeat(4,1fr)}
+  #welcome .card{max-height:calc(100dvh - 16px);overflow:auto;padding:10px 14px}
+  #welcome.home .card{padding:8px 12px}
+  .idrow{display:none}
+  .acts{grid-template-columns:repeat(4,1fr)!important;gap:6px}.acts>div{padding:6px 4px!important}.acts b{font-size:18px!important}
+}

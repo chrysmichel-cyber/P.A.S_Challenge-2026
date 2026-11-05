@@ -63,6 +63,7 @@ function createRenderer(canvas){
  const dyn={wand:[],anim:[],perch:[],birds:[],flies:[],puffs:[],leaves:[],clouds:[],bflies:[],fish:{t:-3,x:0,z:-84},fireK:1,wellT:0,mortT:0,fieldT:0,shakers:[]};
  const labels={};
  /* étiquettes de texte */
+ const lkf=()=>H<460?.66:H<640?.82:1;
  function label(text){const k=text;if(labels[k])return labels[k];const c=mk(10,10),x=c.getContext('2d');let fs=40;x.font='700 '+fs+'px Figtree,system-ui,sans-serif';while(x.measureText(text).width>420&&fs>18){fs-=2;x.font='700 '+fs+'px Figtree,system-ui,sans-serif'}
   const tw=x.measureText(text).width+34;c.width=Math.ceil(tw);c.height=64;const g=c.getContext('2d');g.font='700 '+fs+'px Figtree,system-ui,sans-serif';g.fillStyle='rgba(12,20,44,.78)';g.beginPath();if(g.roundRect)g.roundRect(0,6,tw,52,22);else g.rect(0,6,tw,52);g.fill();g.strokeStyle='rgba(255,220,160,.5)';g.lineWidth=2;g.stroke();g.fillStyle='#fff6e6';g.textAlign='center';g.textBaseline='middle';g.fillText(text,tw/2,33);return labels[k]=c}
 
@@ -329,10 +330,10 @@ function createRenderer(canvas){
     if(e.crop&&dyn.fieldT>0)sway*=1+dyn.fieldT;
     const sc=v.sc*e.sc*(e.crop&&dyn.fieldT>0?1+Math.sin(Math.min(1,dyn.fieldT/2.4)*Math.PI)*.35:1);
     drawSprite(e.sp,v.sx,v.sy,sc,v.dd,fg,sway);
-    if(e.label&&v.dd<120){const lb=label(e.label),lw=clamp(v.sc*2.6,70,130),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-e.ly*v.sc*e.sc-lh,lw,lh)}
+    if(e.label&&v.dd<120){const lb=label(e.label),lw=lkf()*clamp(v.sc*2.6,70,130),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-e.ly*v.sc*e.sc-lh,lw,lh)}
     if(e.tree||e.crop===undefined&&e.tree){hits.push({root:inter.find(i=>i.ent===e)||null,x0:v.sx-v.sc*e.sc*e.sp.wu*.3,x1:v.sx+v.sc*e.sc*e.sp.wu*.3,y0:v.sy-v.sc*e.sc*e.sp.hu,y1:v.sy,dd:v.dd})}}
    else if(it.k===1){const a=it.a;const sc=v.sc;ctx.save();quad(ctx,a.type,v.sx,v.sy,sc,a.dir,a.ph,a.mode===0&&Math.sin(t*.5+a.ph)>.2);ctx.restore();
-    if(v.dd<40&&LCA.animals){const lb=label(LCA.animals.label(a.type,LCA.animals.cur)),lw=clamp(sc*2.1,58,118),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-sc*(a.type==='girafe'?3.6:1.9)-lh,lw,lh)}}
+    if(v.dd<40&&LCA.animals){const lb=label(LCA.animals.label(a.type,LCA.animals.cur)),lw=lkf()*clamp(sc*2.1,58,118),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-sc*(a.type==='girafe'?3.6:1.9)-lh,lw,lh)}}
    else if(it.k===2){const w=it.w;const fc=Math.abs(w.fx)>Math.abs(w.fz)?'s':(w.fz>0?'f':'b');A.drawPerson(ctx,A.kindToOpts(w.o),v.sx,v.sy,v.sc*w.s*1.0,fc,w.ph,1,t,w.fx<0)}
    else if(it.k===3){const c=dyn.chick;ctx.save();ctx.translate(v.sx,v.sy-Math.abs(Math.sin(t*9))*v.sc*.05);ctx.scale(v.sc*.8,v.sc*.8);ctx.fillStyle='#f4efe4';ctx.strokeStyle='#2a1a16';ctx.lineWidth=.04;ctx.beginPath();ctx.ellipse(0,-.3,.3,.24,0,0,TAU);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(.25,-.55,.12,0,TAU);ctx.fill();ctx.stroke();ctx.fillStyle='#cf2a2a';ctx.fillRect(.22,-.7,.06,.1);ctx.fillStyle='#e0a020';ctx.fillRect(.36,-.55,.08,.04);ctx.restore()}
    else if(it.k===4){const n=it.n;
@@ -341,16 +342,16 @@ function createRenderer(canvas){
     if(n.drumTop){ctx.save();ctx.translate(v.sx+v.sc*.7,v.sy);const s=v.sc;ctx.fillStyle='#7a4426';ctx.strokeStyle='#2a1a16';ctx.lineWidth=s*.03;ctx.beginPath();ctx.moveTo(-.3*s,-.9*s);ctx.lineTo(-.24*s,-.05*s);ctx.lineTo(.24*s,-.05*s);ctx.lineTo(.3*s,-.9*s);ctx.fill();ctx.stroke();ctx.fillStyle='#e8d9b8';ctx.beginPath();ctx.ellipse(0,-.9*s,.3*s,.09*s,0,0,TAU);ctx.fill();ctx.stroke();ctx.restore()}
     const o=A.kindToOpts(n.kind);const near=n.near;const fg=!n.kind.drum&&LCA.life?LCA.life.fidget('chat',t,(n.p?n.p.x:0)*.13):null,fx=fg&&fg.kind?{w:1,armL:fg.kind==='stretch'?fg.armL:0,armR:(fg.kind==='stretch'||fg.kind==='scratch')?fg.armR:0,head:fg.head,headX:0}:null;A.drawPerson(ctx,o,v.sx,v.sy,v.sc,'f',near?t*5:t*1.2,near?.25:.04,t,n.flip,fx);
     hits.push({npc:n.id,x0:v.sx-v.sc*.5,x1:v.sx+v.sc*.5,y0:v.sy-v.sc*2.1,y1:v.sy,dd:v.dd});
-    if(v.dd<90){const lb=label(n.name),lw=clamp(v.sc*3,80,150),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-v.sc*2.35-lh,lw,lh)}}
-   else if(it.k===5){const ixs=P.idle&&P.idle.sit>.05?P.idle:null;ctx.save();if(ixs){ctx.beginPath();ctx.rect(v.sx-v.sc*2,v.sy-v.sc*4,v.sc*4,v.sc*(3.55+.45*(1-ixs.sit)));ctx.clip();ctx.translate(0,v.sc*.3*ixs.sit)}A.drawPerson(ctx,f.avatar,v.sx,v.sy-P.y*v.sc,v.sc,P.face,P.ph,P.amp,t,P.flip,P.idle);ctx.restore();if(f.heroName){const lb=label(f.heroName),lw=clamp(v.sc*1.8,56,104),lh=lw*lb.height/lb.width;htag=[lb,v.sx-lw/2,v.sy-P.y*v.sc-v.sc*2.12-lh,lw,lh]}if(P.y>.05){ctx.save();ctx.translate(v.sx,v.sy);ctx.scale(1,.2);ctx.fillStyle='rgba(20,10,30,.25)';ctx.beginPath();ctx.arc(0,0,v.sc*.5,0,TAU);ctx.fill();ctx.restore()}}
+    if(v.dd<90){const lb=label(n.name),lw=lkf()*clamp(v.sc*3,80,150),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-v.sc*2.35-lh,lw,lh)}}
+   else if(it.k===5){const ixs=P.idle&&P.idle.sit>.05?P.idle:null;ctx.save();if(ixs){ctx.beginPath();ctx.rect(v.sx-v.sc*2,v.sy-v.sc*4,v.sc*4,v.sc*(3.55+.45*(1-ixs.sit)));ctx.clip();ctx.translate(0,v.sc*.3*ixs.sit)}A.drawPerson(ctx,f.avatar,v.sx,v.sy-P.y*v.sc,v.sc,P.face,P.ph,P.amp,t,P.flip,P.idle);ctx.restore();if(f.heroName){const lb=label(f.heroName),lw=lkf()*clamp(v.sc*1.8,56,104),lh=lw*lb.height/lb.width;htag=[lb,v.sx-lw/2,v.sy-P.y*v.sc-v.sc*2.12-lh,lw,lh]}if(P.y>.05){ctx.save();ctx.translate(v.sx,v.sy);ctx.scale(1,.2);ctx.fillStyle='rgba(20,10,30,.25)';ctx.beginPath();ctx.arc(0,0,v.sc*.5,0,TAU);ctx.fill();ctx.restore()}}
    else if(it.k===13){drawLifeProp(ctx,it.p,it.v,t,f.hour);}
    else if(it.k===15){const a=it.a,v=it.v,rest=f.hour>=20||f.hour<5.5,dir=Math.sin(a.h)>=0?1:-1,sc=v.sc*(a.type==='poule'?1:a.scale);
     if(a.type==='poule')drawHen(ctx,v.sx,v.sy,v.sc,dir,a.ph,a.moving,rest);else{ctx.save();quad(ctx,a.type,v.sx,v.sy,sc,dir,a.ph,!a.moving&&!rest&&Math.sin(a.ph*.9)>.2);ctx.restore()}
-    if(v.dd<30&&LCA.animals){const lb=label(LCA.animals.label(a.type,LCA.animals.cur)),lw=clamp(v.sc*2,56,110),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-v.sc*(a.type==='poule'?1.2:1.9)-lh,lw,lh)}}
+    if(v.dd<30&&LCA.animals){const lb=label(LCA.animals.label(a.type,LCA.animals.cur)),lw=lkf()*clamp(v.sc*2,56,110),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-v.sc*(a.type==='poule'?1.2:1.9)-lh,lw,lh)}}
    else if(it.k===14){const r=it.r,v=it.v,sc=v.sc*r.scale,fc=r.moving?(Math.abs(Math.cos(r.ry))>Math.abs(Math.sin(r.ry))?(Math.cos(r.ry)>0?'f':'b'):'s'):(r.face===0||r.face===undefined?'f':'b'),ps=r.pose||{armR:0,armL:0,bob:0};
     ctx.save();if(r.seated){ctx.beginPath();ctx.rect(v.sx-sc*2,v.sy-sc*4,sc*4,sc*3.55);ctx.clip();ctx.translate(0,sc*.3)}
     A.drawPerson(ctx,A.kindToOpts(r.kind),v.sx,v.sy-(ps.bob||0)*sc,sc,fc,r.moving?t*r.sp*3+r.ph:t*(r.act==='cook'?3.2:r.act==='craft'?2.6:1.1)+r.ph,r.moving?1:(r.act==='cook'||r.act==='craft'?.3:r.act==='chat'||r.act==='tell'||r.act==='sell'?.14:.04),t,Math.sin(r.ry)<0,r.pose&&r.pose.fid?{w:1,armL:r.pose.fid==='stretch'?r.pose.armL:0,armR:(r.pose.fid==='stretch'||r.pose.fid==='scratch')?r.pose.armR:0,head:r.pose.head,headX:0}:null);ctx.restore();
-    if(v.dd<26){const lb=label(r.role),lw=clamp(v.sc*2.4,64,120),lh=lw*lb.height/lb.width;ctx.globalAlpha=.9;ctx.drawImage(lb,v.sx-lw/2,v.sy-sc*2.6-lh,lw,lh);ctx.globalAlpha=1}}
+    if(v.dd<26){const lb=label(r.role),lw=lkf()*clamp(v.sc*2.4,64,120),lh=lw*lb.height/lb.width;ctx.globalAlpha=.9;ctx.drawImage(lb,v.sx-lw/2,v.sy-sc*2.6-lh,lw,lh);ctx.globalAlpha=1}}
    else if(it.k===12){const h=it.h,rv=h.rv,s=v.sc,bob=Math.sin(t*2.2+h.i)*.1;ctx.save();ctx.translate(v.sx,v.sy);
     ctx.save();ctx.scale(1,.28);ctx.strokeStyle='rgba(255,233,168,'+(.85*rv).toFixed(2)+')';ctx.lineWidth=s*.06;ctx.beginPath();ctx.arc(0,0,s*.6*(.6+.4*rv),0,TAU);ctx.stroke();ctx.restore();
     const gg=ctx.createRadialGradient(0,-s*.85,0,0,-s*.85,s*1.25);gg.addColorStop(0,'rgba('+h.rgb+','+(.65*rv).toFixed(2)+')');gg.addColorStop(1,'rgba('+h.rgb+',0)');ctx.fillStyle=gg;ctx.beginPath();ctx.arc(0,-s*.85,s*1.25,0,TAU);ctx.fill();
@@ -371,7 +372,7 @@ function createRenderer(canvas){
     hits.push({root:inter.find(i=>i.id==='fire'),x0:v.sx-v.sc*.9,x1:v.sx+v.sc*.9,y0:v.sy-v.sc*1.8,y1:v.sy,dd:v.dd})}
    else if(it.k===11){const q=it.q,fx=Math.sin(q.h),fz=Math.cos(q.h),fc=Math.abs(fx)>Math.abs(fz)?'s':(fz>0?'f':'b');
     A.drawPerson(ctx,q.o,v.sx,v.sy,v.sc,fc,q.ph,q.moving?1:.05,t,fx<0);
-    if(v.dd<110){const lb=label(q.name),lw=clamp(v.sc*1.8,56,104),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-v.sc*2.12-lh,lw,lh)}}
+    if(v.dd<110){const lb=label(q.name),lw=lkf()*clamp(v.sc*1.8,56,104),lh=lw*lb.height/lb.width;ctx.drawImage(lb,v.sx-lw/2,v.sy-v.sc*2.12-lh,lw,lh)}}
    else if(it.k===10){drawBunting(t)}}
   if(htag)ctx.drawImage(htag[0],htag[1],htag[2],htag[3],htag[4]);/* le nom reste visible devant le décor */
   /* éléments interactifs sans sprite dédié : puits, mortier, champ */
