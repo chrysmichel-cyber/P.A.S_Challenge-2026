@@ -1,33 +1,10 @@
-# N’Zassa — « Un continent, mille cultures, une aventure. »
+# 1. N’Zassa — « Un continent, mille cultures, une aventure. »
 
 Jeu d’aventure culturelle et éducatif : on explore des villages d’Afrique, on parle à leurs habitants, on ramasse des ingrédients, on écoute des contes, on apprend des mots, on passe des quiz et on enregistre des récits. **58 langues**, cinq régions, un rendu **3D** (par défaut) et un rendu **2D** peint, une seule progression.
 
 Projet pour le **P.A.S Challenge Dakar 2026**, équipe **BugSquash** : GUINDO CHRYS MICHEL CHECK, Kouame Akissi Noëlle Desiree, Konan Ange Stéphane, OYETOLA ADEKOUEWOU AYILA HAMIDE.
 
 > **À lire d’abord : les contenus de langues sont des brouillons.** Mots, contes, recettes et textes d’histoire ont été rédigés pour ce prototype par une IA. Ils ne sont ni sourcés ni validés par des locuteurs, et ne doivent pas être pris pour des données linguistiques authentiques. Le jeu l’affiche (« Brouillon », « Contenu partiel », « à compléter ») au lieu d’inventer. La prononciation est une voix de synthèse approximative.
-
----
-
-## 1. Lancer le jeu
-
-Prérequis : [Node.js](https://nodejs.org) 18 ou plus.
-
-```bash
-npm install
-npm run dev        # ouvre http://127.0.0.1:5173
-```
-
-Sans Node : `python -m http.server 8000` dans ce dossier, puis <http://localhost:8000>. Ouvrir `index.html` par double-clic (`file://`) ne convient pas à tous les navigateurs. Connexion internet conseillée (polices et bibliothèque 3D hébergées dans le dossier `vendor/`, polices Google avec repli système).
-
-| Commande | Effet |
-|---|---|
-| `npm run dev` | Serveur local avec rechargement |
-| `npm run validate` | Contrôle technique des données de langues |
-| `npm run lint` | Vérification de syntaxe et de propreté du code |
-| `npm test` | Tests unitaires (Node) |
-| `npm run e2e` | Tests de bout en bout dans un navigateur (Playwright) |
-| `npm run test:all` | Tout ce qui précède |
-| `npm run build` / `npm run preview` | Copie statique dans `dist/` et aperçu |
 
 ## 2. Commandes de jeu
 
