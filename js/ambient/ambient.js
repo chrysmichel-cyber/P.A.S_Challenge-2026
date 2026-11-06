@@ -32,6 +32,11 @@ function weatherAt(t,opt){
 const WEATHER_NAMES=['Ciel dégagé','Nuageux','Pluie','Vent de sable','Brume'];
 function state(t,opt){
  opt=opt||{};const fixed=opt.hour;
+ if(opt.realtime){
+  const r=opt.realtime,h=Number.isFinite(r.hour)?r.hour:(Number.isFinite(r.localHour)?r.localHour:12),d=clamp(r.daylight,0,1),rain=r.rain?1:0,cloud=clamp(r.cloud||0,0,1),dust=clamp(r.dust||0,0,1),mist=clamp(r.mist||0,0,1),kind=rain?2:(mist>.4?4:(cloud>.35?1:0));
+  const moment=h<5?'Nuit':h<7.5?'Aube':h<11.5?'Matin':h<14.5?'Midi':h<17.5?'Après-midi':h<20?'Soir':'Nuit';
+  return {hour:h,daylight:d,night:1-d,glow:glow(h),cloud,rain,dust,mist,temp:Number.isFinite(r.temp)?r.temp:20,kind,moment,weather:r.weather||WEATHER_NAMES[kind],dim:clamp(1-.55*(1-d)-.18*cloud-.12*rain-.15*dust-.08*mist,.25,1),realtime:true,sourceTime:r.sourceTime,timezone:r.timezone};
+ }
  const h=fixed!==undefined?fixed:hourAt(t,opt.lon),d=daylight(h),w=weatherAt(t,opt);
  const nw=!!opt.noWeather,rain=nw?0:w.rain,cloud=nw?0:w.cloud;
  const dust=nw?0:w.dust,mist=nw?0:w.mist*(1-smooth(8.5,11.5,h));   /* la brume se lève dans la matinée */

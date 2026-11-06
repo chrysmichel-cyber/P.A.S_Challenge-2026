@@ -1,7 +1,7 @@
 /* Langue : swahili. Données rédigées pour ce prototype, sans source ni validation linguistique (brouillon). */
 (function(LCA){
  const nums=LCA.helpers.nums;
- LCA.add({id:'swahili',name:'Swahili',where:'Tanzanie, Kenya, côte est-africaine',region:'est',geo:{lon:39.2,lat:-6.2,lab:'r',zone:'Côte swahilie'},hello:'Habari',code:'SW',
+ LCA.add({id:'swahili',name:'Swahili',where:'Tanzanie, Kenya, côte est-africaine',region:'est',geo:{lon:38.7,lat:-6.4,lab:'r',zone:'Côte swahilie'},hello:'Habari',code:'SW',
   river:{wo:'Mto.',fr:'La rivière (mto) apporte l’eau (maji) au village.'},
   board:['moja · mbili · tatu','nne · tano'],
   words:[

@@ -18,8 +18,42 @@ function sanitize(m){
   consent:m.consent===true,status:st,reviewer:st==='relu'?line(m.reviewer,LIM.reviewer):line(m.reviewer,LIM.reviewer),
   duration:isFinite(+m.duration)&&+m.duration>0?Math.min(Math.round(+m.duration),MAX_SEC):0,
   mime:line(m.mime,60),size:isFinite(+m.size)?Math.max(0,+m.size):0,
-  created:isFinite(+m.created)?+m.created:0,updated:isFinite(+m.updated)?+m.updated:0};
+  created:isFinite(+m.created)?+m.created:0,updated:isFinite(+m.updated)?+m.updated:0,
+  region:line(m.region,60),share:m.share==='communaute'?'communaute':'prive',
+  narratorOk:m.narratorOk===undefined?!!line(m.narrator,LIM.narrator):m.narratorOk===true,
+  origName:line(m.origName,120),origSource:m.origSource==='import'?'import':'micro',sha256:/^[0-9a-f]{64}$/.test(String(m.sha256||''))?m.sha256:'',
+  votes:cleanVotes(m.votes),imported:m.imported===true,importedFrom:line(m.importedFrom,60)};
 }
+const REQUIRED=2,DEC={ok:'Fidèle au récit',bad:'À corriger'};
+function cleanVotes(v){const o={};if(v&&typeof v==='object')Object.keys(v).slice(0,40).forEach(k=>{const x=v[k];if(!x||!DEC[x.d])return;o[line(k,60).toLowerCase()]={d:x.d,name:line(x.name||k,60),native:x.native===true,note:line(x.note,300),at:isFinite(+x.at)?+x.at:0}});return o}
+/* Le nom de la personne qui raconte n'est conservé que si elle a donné son accord pour qu'il soit indiqué. */
+function privacy(m){if(!m.narratorOk)m.narrator='';return m}
+/* Validation communautaire : un récit n'est « validé » pour publication que s'il est partagé, relu, et confirmé par au moins REQUIRED locuteurs distincts sans contestation. */
+function communityStatus(m){
+ if(m.share!=='communaute')return {id:'prive',label:'Privé (sur cet appareil)',ok:0,bad:0,publishable:false};
+ const v=Object.keys(m.votes||{}).map(k=>m.votes[k]).filter(x=>x.native),ok=v.filter(x=>x.d==='ok').length,bad=v.filter(x=>x.d==='bad').length;
+ if(bad>0)return {id:'conteste',label:'En discussion',ok,bad,publishable:false};
+ if(ok>=REQUIRED&&m.status==='relu'&&m.consent)return {id:'valide',label:'Validé par la communauté (déclaratif)',ok,bad,publishable:true};
+ return {id:'a_valider',label:ok?'Relu '+ok+' fois, en attente':'En attente de validation',ok,bad,publishable:false}}
+function vote(m,reviewer,decision,note,now){
+ if(!reviewer||!reviewer.name)return {ok:false,error:'reviewer'};if(!reviewer.native)return {ok:false,error:'native'};if(!DEC[decision])return {ok:false,error:'decision'};
+ if(m.share!=='communaute')return {ok:false,error:'private'};
+ const k=line(reviewer.name,60).toLowerCase();if(m.narrator&&line(m.narrator,60).toLowerCase()===k)return {ok:false,error:'self'};
+ const votes=Object.assign({},m.votes);votes[k]={d:decision,name:line(reviewer.name,60),native:true,note:line(note,300),at:now||Date.now()};return {ok:true,votes}}
+/* Bibliothèque : recherche texte (titre, narrateur si indiqué, lieu, région, transcription) et filtres. */
+const fold=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+function search(list,o){o=o||{};const q=fold(o.q).split(/\s+/).filter(Boolean);
+ return list.filter(m=>{if(o.lang&&m.lang!==o.lang)return false;if(o.region&&fold(m.region)!==fold(o.region))return false;
+  if(o.status&&communityStatus(m).id!==o.status)return false;
+  const hay=fold([m.title,m.narratorOk?m.narrator:'',m.place,m.region,m.transcript,m.translation].join(' '));return q.every(w=>hay.indexOf(w)>=0)})}
+/* Paquet d'échange (fichier .json) : fiche + audio original en base64. Aucune connexion nécessaire. */
+function toBundle(m,audioB64,type,now){const x=privacy(sanitize(m));x.id='';return {format:'nzassa-oral',version:1,exportedAt:new Date(now||Date.now()).toISOString(),meta:x,audio:{type:line(type||m.mime,60),b64:audioB64}}}
+function fromBundle(obj){
+ if(!obj||typeof obj!=='object'||obj.format!=='nzassa-oral'||obj.version!==1)return {ok:false,error:'format'};
+ const m=sanitize(obj.meta);if(!m.consent)return {ok:false,error:'consent'};if(!m.title)return {ok:false,error:'title'};
+ if(!obj.audio||typeof obj.audio.b64!=='string'||obj.audio.b64.length<8||!/^[A-Za-z0-9+/=]+$/.test(obj.audio.b64))return {ok:false,error:'audio'};
+ if(obj.audio.b64.length>MAX_BYTES*1.4)return {ok:false,error:'toobig'};
+ m.imported=true;m.importedFrom=m.importedFrom||m.reviewer||'';privacy(m);return {ok:true,meta:m,type:line(obj.audio.type,60)||m.mime,b64:obj.audio.b64}}
 /* Liste de codes d'erreur ; vide = valide. */
 function validate(m,o){
  o=o||{};const e=[];
@@ -60,7 +94,7 @@ function create(o){
   async get(id){const v=await ad.get(mk+id);if(!v)return null;const a=await ad.get(ak+id);return {meta:sanitize(v),audio:a||null}},
   /* Crée un récit. audio = {blob,type} (obligatoire). */
   async create(meta,audio){
-   const m=sanitize(meta);if(audio){m.size=audio.blob&&audio.blob.size||0;m.mime=audio.type||m.mime}
+   const m=privacy(sanitize(meta));if(audio){m.size=audio.blob&&audio.blob.size||0;m.mime=audio.type||m.mime}
    const err=validate(m,{langs,needAudio:true,hasAudio:!!(audio&&audio.blob)});if(err.length)return {ok:false,errors:err};
    m.id=newId();m.created=m.updated=now();
    try{await ad.put(ak+m.id,{blob:audio.blob,type:audio.type||''});await ad.put(mk+m.id,m)}catch(e){try{await ad.del(ak+m.id)}catch(_){}return {ok:false,errors:['storage']}}
@@ -68,7 +102,7 @@ function create(o){
   },
   async update(id,patch){
    const cur=await ad.get(mk+id);if(!cur)return {ok:false,errors:['unknown']};
-   const m=sanitize(Object.assign({},cur,patch,{id,created:cur.created,duration:cur.duration,mime:cur.mime,size:cur.size}));
+   const m=privacy(sanitize(Object.assign({},cur,patch,{id,created:cur.created,duration:cur.duration,mime:cur.mime,size:cur.size,origName:cur.origName,origSource:cur.origSource,sha256:cur.sha256,imported:cur.imported,importedFrom:cur.importedFrom,votes:patch&&patch.votes?patch.votes:cur.votes})));
    const err=validate(m,{langs});if(err.length)return {ok:false,errors:err};
    m.updated=now();try{await ad.put(mk+id,m)}catch(e){return {ok:false,errors:['storage']}}
    return {ok:true,meta:m};
@@ -76,5 +110,5 @@ function create(o){
   async remove(id){try{await ad.del(mk+id);await ad.del(ak+id);return true}catch(e){return false}}
  };
 }
-return {create,sanitize,validate,exportText,memAdapter,idbAdapter,LIM,MAX_SEC,MAX_BYTES,STATUS};
+return {privacy,communityStatus,vote,search,toBundle,fromBundle,REQUIRED,DEC,create,sanitize,validate,exportText,memAdapter,idbAdapter,LIM,MAX_SEC,MAX_BYTES,STATUS};
 });

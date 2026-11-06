@@ -74,7 +74,11 @@ Interface adaptée au téléphone (portrait et paysage), joystick, boutons tacti
 
 ## 4. Sauvegarde
 
-Navigateur uniquement (aucun envoi sur Internet). Clé `lca-v2` (invité) ou `lca-u-<id>` (profil), schéma versionné (v4) avec migration des anciennes sauvegardes et copie de secours `.bak` avant la première migration. Index des profils : `lca-acc`. Récits oraux : IndexedDB `nzassa-oral`. Paramètres > « Effacer toutes mes données » remet la progression à zéro. **Vider les données du site efface tout** : prévoir un export pour les récits.
+Le jeu local reste dans le navigateur (aucun envoi sur Internet). Clé `lca-v2` (invité) ou `lca-u-<id>` (profil), schéma versionné (v4) avec migration des anciennes sauvegardes et copie de secours `.bak` avant la première migration. Index des profils : `lca-acc`. Récits oraux : IndexedDB `nzassa-oral`. Paramètres > « Effacer toutes mes données » remet la progression à zéro. **Vider les données du site efface tout** : prévoir un export pour les récits.
+
+Le serveur optionnel de `server/` sauvegarde les comptes, récits, signalements et réglages applicatifs dans SQLite (`server/db.sqlite`). Il fonctionne avec Node ≥ 18, sans dépendance npm ; Python fournit le module SQLite standard utilisé pour écrire le fichier. Un ancien fichier JSON configuré par `NZASSA_DB` est migré automatiquement.
+
+La météo du village utilise, si l’utilisateur l’autorise, sa géolocalisation actuelle et les conditions réelles d’Open-Meteo. Les données sont refusées si leur horodatage dépasse ±1 heure, puis l’ambiance géographique stylisée reprend automatiquement. La position n’est pas envoyée au serveur N’Zassa. La géolocalisation nécessite HTTPS (ou `localhost`) et une permission du navigateur.
 
 ## 5. Structure du projet
 

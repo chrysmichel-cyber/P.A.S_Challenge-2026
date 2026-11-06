@@ -128,7 +128,7 @@ function patFill(c,i,x,y,w,h){const C=PATS[(i||0)%5];c.save();c.beginPath();c.re
 function limb(c,x1,y1,x2,y2,w,col,sh){c.save();c.lineCap='round';c.strokeStyle=OUT;c.lineWidth=w+.05;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();c.strokeStyle=col;c.lineWidth=w;c.beginPath();c.moveTo(x1,y1);c.lineTo(x2,y2);c.stroke();
  if(sh){c.strokeStyle=sh;c.globalAlpha=.55;c.lineWidth=w*.45;c.beginPath();c.moveTo(x1+w*.22,y1);c.lineTo(x2+w*.22,y2);c.stroke()}c.restore()}
 /* o: options ; face: 'f' | 'b' | 's' (profil vers la droite) ; ph: phase de marche ; amp: 0..1 */
-function drawPerson(c,o,x,y,s,face,ph,amp,t,flip){
+function drawPerson(c,o,x,y,s,face,ph,amp,t,flip,ix){
  const skin=hx(o.skin),sk2=shade(skin,-.26),sk3=shade(skin,.16),top=hx(o.top),top2=shade(top,-.3),top3=shade(top,.2),bot=hx(o.bottom),bot2=shade(bot,-.3);
  const hairC=hx(o.hairCol||0x151515),hair2=shade(hairC,.3),hair3=shade(hairC,-.35);const fem=!!o.fem,side=face==='s',back=face==='b';
  const sw=Math.sin(ph)*amp,bob=Math.abs(Math.cos(ph))*.045*amp;
@@ -164,7 +164,7 @@ function drawPerson(c,o,x,y,s,face,ph,amp,t,flip){
  if(o.pack&&face==='f'){c.strokeStyle='#1c1c1c';c.lineWidth=.07;[-1,1].forEach(sd=>{c.beginPath();c.moveTo(sd*.15,shY+.02);c.lineTo(sd*.11,hipY-.1);c.stroke()})}
  /* bras */
  const sleeveCol=o.sleeve||robe?tcol:skin,sleeve2=o.sleeve||robe?shade(tcol,-.3):sk2;
- [[-1,sw],[1,-sw]].forEach(a=>{const sd=a[0],sg2=a[1];const ax=side?0:sd*(tw+.04),ex=ax+(side?sg2*.28:sd*.06),ey=shY+.65+(o.drum?-.12:0)+(side?-Math.abs(sg2)*.07:0);
+ [[-1,sw],[1,-sw]].forEach(a=>{const sd=a[0],sg2=a[1];const ax=side?0:sd*(tw+.04),ex=ax+(side?sg2*.28:sd*.06),ey0=shY+.65+(o.drum?-.12:0)+(side?-Math.abs(sg2)*.07:0),rz=ix?Math.max(0,Math.min(1,-(sd<0?ix.armL:ix.armR)/3)):0,ey=ey0-rz*1.2;
   if(side&&sd<0&&false)return;
   limb(c,ax,shY+.1,ex,ey,.15,sleeveCol,sleeve2);
   c.fillStyle=skin;c.strokeStyle=OUT;c.lineWidth=.03;c.beginPath();c.arc(ex,ey+.05,.08,0,TAU);c.fill();c.stroke()});
@@ -172,7 +172,7 @@ function drawPerson(c,o,x,y,s,face,ph,amp,t,flip){
  /* cou */
  c.fillStyle=sk2;c.fillRect(-.07,shY-.12,.14,.17);
  /* tête */
- const hy=-1.76,hr=.215;c.save();c.translate(side?.02:0,hy);
+ const hy=-1.76,hr=.215;c.save();c.translate(side?.02:0,hy);if(ix&&ix.w>0){c.translate(ix.head*.06,0);c.rotate(-ix.headX*.3)}
  /* cheveux arrière */
  const hs=o.hs||'court';
  if(hs==='afro'){blob(c,0,-.04,.33,.31,hair3);blob(c,-.04,-.08,.3,.27,hairC);blob(c,-.1,-.15,.14,.09,hair2,.6)}

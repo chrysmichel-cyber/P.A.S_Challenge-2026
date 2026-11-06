@@ -6,5 +6,5 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const out = join(root, 'dist');
 rmSync(out, { recursive: true, force: true });
 mkdirSync(out, { recursive: true });
-for (const p of ['index.html', 'css', 'js', 'vendor']) cpSync(join(root, p), join(out, p), { recursive: true });
+for (const p of ['index.html', 'css', 'js', 'img', 'vendor']) cpSync(join(root, p), join(out, p), { recursive: true });
 console.log('Site statique prêt dans dist/ (à servir avec n’importe quel serveur de fichiers).');

@@ -67,12 +67,40 @@
     <div id="panelBody"></div>
   </aside>
 
+  <section id="maskViewer" class="ui" hidden role="dialog" aria-modal="true" aria-labelledby="maskViewTitle">
+    <div class="mask-detail glass">
+      <header class="mask-detail-head"><div><small>Collection permanente · Nzassa</small><h2 id="maskViewTitle"></h2></div><button id="maskViewerClose" aria-label="Fermer la notice">×</button></header>
+      <div class="mask-detail-main">
+        <div class="mask-view-stage"><img id="maskViewPhoto" alt=""><canvas id="mask3d" tabindex="0" aria-label="Modèle 3D manipulable du masque"></canvas><span class="mask-view-hint">Glisse pour tourner · molette ou pincement pour zoomer</span><button id="maskViewReset" type="button" aria-label="Réinitialiser la vue 3D">⟳</button></div>
+        <article class="mask-view-copy"><div id="maskViewIdentity" class="mask-view-identity"></div><p id="maskViewDesc"></p><p id="maskViewContext" class="mask-view-context"></p><a id="maskViewSource" class="mask-source" target="_blank" rel="noopener"></a><small id="maskViewRights" class="mask-rights"></small><button id="maskViewGoRegion" class="btn warm"></button><small class="mask-model-note">Modèle 3D en relief interprété depuis une photo de face. La profondeur et le revers sont des approximations numériques, pas un scan 3D de l’objet.</small></article>
+      </div>
+    </div>
+  </section>
+
+  <section id="museumRoom" class="ui" hidden role="dialog" aria-modal="true" aria-labelledby="museumRoomTitle">
+    <canvas id="museumGallery3d" tabindex="0" aria-label="Salle du musée en 3D. Glisse pour regarder autour et clique sur un masque pour sa notice."></canvas>
+    <header class="museum-room-top"><div class="museum-room-brand glass"><small>Visite immersive · masques et instruments</small><h2 id="museumRoomTitle">Musée des masques</h2></div><button id="museumRoomExit" class="glass" type="button">Sortir du musée <span aria-hidden="true">×</span></button></header>
+    <aside class="museum-room-side glass" aria-live="polite">
+      <small class="museum-room-kicker">Collection permanente</small>
+      <div id="museumExhibits" class="museum-exhibit-list" aria-label="Choisir un masque"></div>
+      <h3 id="museumExhibitName">Choisis un masque</h3>
+      <p id="museumExhibitIdentity" class="sub"></p>
+      <p id="museumExhibitDescription"></p>
+      <a id="museumExhibitSource" class="mask-source" target="_blank" rel="noopener"></a>
+      <small id="museumExhibitRights" class="mask-rights"></small>
+      <button id="museumInspectMask" class="btn" type="button" hidden>Manipuler ce masque en 3D</button>
+      <button id="museumExploreRegion" class="btn warm" type="button"></button>
+    </aside>
+    <p class="museum-room-help glass">Glisse pour regarder autour · molette ou pincement pour zoomer · sélectionne une vitrine pour lire sa notice</p>
+  </section>
+
   <nav id="dock" class="ui glass" aria-label="Menu principal">
     <button data-tab="quetes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M5 21V4M5 5h12l-2 4 2 4H5"/></svg>Quêtes</button>
     <button data-tab="inventaire" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="6" y="8" width="12" height="13" rx="4"/><path d="M9 8V6a3 3 0 0 1 6 0v2M9 14h6"/></svg>Inventaire</button>
     <button data-tab="contes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 5c3-1 6-1 9 1 3-2 6-2 9-1v14c-3-1-6-1-9 1-3-2-6-2-9-1zM12 6v14"/></svg>Contes</button>
     <button data-tab="recettes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M7 14a4 4 0 1 1 1-7.7A4 4 0 0 1 16 6.3 4 4 0 1 1 17 14v5H7zM7 17h10"/></svg>Recettes</button>
     <button data-tab="traditions" aria-pressed="false"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="8" rx="8" ry="3"/><path d="M4 8v8c0 1.7 3.6 3 8 3s8-1.3 8-3V8M7 10l3 8M17 10l-3 8"/></svg>Traditions</button>
+    <button data-tab="musee" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M3 20h18M5 20V8l7-4 7 4v12M9 20v-6h6v6M8 9h.01M16 9h.01"/></svg>Musée</button>
     <button data-tab="apprentissage" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M2 9l10-5 10 5-10 5zM6 11.5V16c0 1.5 3 3 6 3s6-1.5 6-3v-4.5"/></svg>Apprendre</button>
   </nav>
   <div id="toast" class="ui glass" hidden></div>
@@ -85,6 +113,9 @@
 </div>
 <script src="vendor/three.min.js"></script>
 <script src="js/data/common.js"></script>
+<script src="js/museum/masks.js"></script>
+<script src="js/museum/instruments.js"></script>
+<script src="js/museum/relief.js"></script>
 <script src="js/data/wolof.js"></script>
 <script src="js/data/dioula.js"></script>
 <script src="js/data/bambara.js"></script>
@@ -135,6 +166,7 @@
 <script src="js/life/life.js"></script>
 <script src="js/ambient/ambient.js"></script>
 <script src="js/ambient/climate.js"></script>
+<script src="js/ambient/realtime.js"></script>
 <script src="js/ambient/animals.js"></script>
 <script src="js/kids/kids.js"></script>
 <script src="js/learn/progression.js"></script>

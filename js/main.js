@@ -21,7 +21,7 @@ const regionOf=L=>REGION_BY_ID[L.region]||LCA.regions[0];
 const KEY='lca-v2';
 const state=LCA.store.defaults();
 /* Comptes locaux : « stor() » renvoie le stockage du profil actif (invité = clé historique lca-v2). */
-let ACC=null;try{ACC=LCA.accounts.create({storage:localStorage})}catch(e){ACC=null}
+let ACC=null,ONLINE_AUTH=null;try{ONLINE_AUTH=LCA.online&&LCA.config?LCA.online.create({apiBase:LCA.config.apiBase}):null;ACC=LCA.accounts.create({storage:localStorage,online:ONLINE_AUTH})}catch(e){ACC=null}
 const stor=()=>ACC?ACC.storage():localStorage;
 function load(){try{Object.assign(state,LCA.store.load(stor()))}catch(e){}}
 function save(){LCA.store.save(stor(),state)}
@@ -74,8 +74,8 @@ function renderTracker(){
 $('#quest').onclick=()=>openPanel('quetes');
 
 /* ================= PANNEAUX ================= */
-const TABS=[['perso','Personnage'],['quetes','Quêtes'],['inventaire','Inventaire'],['contes','Contes'],['recettes','Recettes'],['traditions','Traditions'],['apprentissage','Apprendre']];
-let tab=null,servings=6,learnMode='cartes',quiz=null,speaking=false,taleIdx=0,recIdx=0,confirmReset=false;
+const TABS=[['perso','Personnage'],['quetes','Quêtes'],['inventaire','Inventaire'],['contes','Contes'],['recettes','Recettes'],['traditions','Traditions'],['musee','Musée'],['apprentissage','Apprendre']];
+let tab=null,servings=6,learnMode='cartes',quiz=null,speaking=false,taleIdx=0,recIdx=0,confirmReset=false,cookSession=null;
 const panel=$('#panel'),pbody=$('#panelBody');
 const fmtQty=n=>String(n>=100?Math.round(n/10)*10:Math.round(n*2)/2).replace('.',',');
 
@@ -110,12 +110,33 @@ function tContes(){
 function tRecettes(){
  if(!lang().recipes.length)return todo('Recettes','Aucune recette n’est documentée pour '+esc(lang().name)+'.');
  const L=lang(),R=L.recipes[recIdx%L.recipes.length],k=servings/R.base;
+ if(cookSession&&cookSession.recipe===recIdx)return tCooking(R,k);
  let h='<div class="seg">'+L.recipes.map((r,i)=>'<button data-rec="'+i+'" aria-pressed="'+(i===recIdx)+'">'+esc(r.name)+'</button>').join('')+'</div>';
  h+='<h2>'+esc(R.name)+'</h2>'+'<span class="vr">Validation requise</span>'+'<p class="sub">'+esc(R.intro)+'</p><div class="serv"><span>Pour</span><button data-sv="-1" aria-label="Moins de parts">−</button><output>'+servings+'</output><button data-sv="1" aria-label="Plus de parts">+</button><span>personnes</span></div><h3>Ingrédients</h3><ul class="ing">';
  R.ing.forEach(g=>{h+='<li><span>'+esc(g[0])+(g[3]?'<em>'+esc(g[3])+'</em>':'')+'</span><span>'+esc(fmtQty(g[1]*k)+(g[2]?' '+g[2]:''))+'</span></li>'});
  h+='</ul><h3>Préparation</h3><ol class="steps">'+R.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>';
  h+='<p class="note">Les mots en orange sont à retenir en '+esc(L.name)+'. Recette courante non sourcée, quantités indicatives : contenu à faire valider.</p>';
+ if(gotTypes()>=4&&D().flags.delivered){h+='<div class="tcard"><b>La cuisine de Fatou</b><p>Ajoute les aliments un par un, puis réalise les gestes de la recette dans la scène 3D.</p><button class="btn warm sm" data-act="cookStart">'+(D().flags.cooked?'Recommencer la préparation':'Commencer à cuisiner avec Fatou')+'</button></div>'}
  return h}
+function beginCookSession(){if(!R||R.is2d||!R.beginCook){toast('Active le rendu 3D pour cuisiner avec Fatou.');return false}cookSession={recipe:recIdx,phase:'ingredients',item:0,step:0};R.beginCook();return true}
+function cookGesture(step){const q=String(step).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');if(/\b(pile|piler|ecrase|ecraser|broy|hache|hacher)\b/.test(q))return ['pound','Piler au mortier'];if(/\b(remue|remuer|melange|melanger|delaye|delayer|fais revenir|dorer)\b/.test(q))return ['stir','Remuer dans la marmite'];if(/\b(sers|servir|dispose|dresser)\b/.test(q))return ['serve','Dresser le plat'];if(/\b(verse|verser|ajoute|ajouter|incorpore|incorporer)\b/.test(q))return ['pour','Verser dans la marmite'];if(/\b(cuis|cuire|mijote|laisser cuire|laisse cuire)\b/.test(q))return ['simmer','Laisser mijoter'];return ['stir','Mélanger avec la cuillère']}
+function tCooking(recipe,k){const s=cookSession,done=s.phase==='done',items=recipe.ing,total=items.length+recipe.steps.length,progress=s.phase==='ingredients'?s.item:items.length+s.step;let h='<div class="seg"><button data-act="cookBack">← Recette</button><span class="chip"><b>'+Math.min(progress,total)+' / '+total+'</b> étapes</span></div><h2>Avec Fatou · '+esc(recipe.name)+'</h2><div class="bar"><i style="width:'+Math.round(progress/Math.max(1,total)*100)+'%"></i></div>';
+ if(done)return h+'<div class="tcard cook-guide"><b>Fatou · Le plat est prêt !</b><p>Tu as ajouté les ingrédients un par un, puis suivi les gestes de préparation. Le repas peut être servi.</p><button class="btn warm" data-act="cookFinish">Terminer la cuisine</button></div>';
+ if(s.phase==='ingredients'){const item=items[s.item],w=item&&item[3]?wordOf(item[3]):null;h+='<div class="tcard cook-guide"><small>Fatou te guide</small><b>Ajoute '+esc(item?item[0]:'')+'</b><p>Prends cet ingrédient et verse-le dans la marmite.'+(item&&item[2]?'<br>Quantité : '+esc(fmtQty(item[1]*k)+' '+item[2]):'')+'</p>'+(w&&!w.miss?'<div class="chip"><b>'+esc(w.wo)+'</b> · '+esc(w.fr)+'</div>':'')+'<button class="btn warm" data-act="cookAdd">Ajouter à la marmite</button><p class="cook-count">Dans la marmite : '+s.item+' sur '+items.length+' ingrédients</p></div><div class="cook-list">'+items.map((x,i)=>'<span class="chip'+(i<s.item?' have':'')+'">'+(i<s.item?'✓ ':'')+esc(x[0])+'</span>').join('')+'</div>';return h}
+ const step=recipe.steps[s.step],gesture=cookGesture(step);h+='<div class="tcard cook-guide"><small>Fatou te montre · étape '+(s.step+1)+' sur '+recipe.steps.length+'</small><b>'+esc(gesture[1])+'</b><p>'+esc(step)+'</p><button class="btn warm" data-act="cookDo">Faire ce geste</button><p class="cook-count">Les ingrédients ajoutés restent visibles dans la marmite.</p></div><ol class="steps">'+recipe.steps.map((x,i)=>'<li class="'+(i<s.step?'done':'')+'">'+esc(x)+'</li>').join('')+'</ol>';return h}
+const MASKS=window.LCA.maskCollection||[];
+let maskReliefInstance=null,maskFocusReturn=null;
+function tMusee(){const L=lang(),animals=Object.keys(LCA.animals.FR).map(k=>({fr:LCA.animals.FR[k],lo:LCA.animals.localName(L,k)}));let h='<h2>Musée des masques</h2><p class="sub">La même collection est accessible dans chaque village. Entre dans la maison du musée pour parcourir les masques au mur, les instruments 3D et leurs notices.</p><button class="btn warm" data-act="museumVisit">Entrer dans le musée immersif</button><p class="sub" style="margin-top:12px">'+MASKS.length+' masques · '+MUSEUM_INSTRUMENTS.length+' instruments · plusieurs peuples</p>';
+ LCA.regions.forEach(r=>{const items=MASKS.map((m,i)=>({m,i})).filter(x=>x.m.region===r.id);if(!items.length)return;h+='<h3>'+esc(r.name)+' · '+items.length+' masque'+(items.length>1?'s':'')+'</h3><div class="mask-gallery">';items.forEach(({m,i})=>{h+='<button class="mask-card" data-mask="'+i+'" aria-label="Ouvrir la notice et le modèle 3D : '+esc(m.traditionalName)+'"><img src="'+esc(m.image)+'" alt="" loading="lazy"><b>'+esc(m.traditionalName)+'</b><small>'+esc(m.people)+' · '+esc(m.place)+'</small><em>Voir la notice et le modèle 3D →</em></button>'});h+='</div>'});
+ h+='<p class="note">Les noms et usages sont rapportés d’après les notices muséales. Quand un catalogue ne donne pas de nom traditionnel, cela est signalé explicitement.</p><h3>Les animaux · vocabulaire</h3><p class="sub">Compare les noms français et ceux déjà documentés dans la langue locale de '+esc(L.name)+'.</p><div class="chips">'+animals.map(a=>'<button class="chip" data-animal="'+esc(a.lo||'')+'" '+(a.lo?'':'disabled')+'><b>'+esc(a.fr)+'</b>'+(a.lo?' · '+esc(a.lo):' · à documenter')+'</button>').join('')+'</div><p class="note">Les mots absents du vocabulaire ne sont ni traduits ni devinés.</p>';return h}
+function openMaskViewer(mask,trigger){if(!mask)return;const modal=$('#maskViewer'),region=REGION_BY_ID[mask.region];maskFocusReturn=trigger||document.activeElement;$('#maskViewTitle').textContent=mask.traditionalName;$('#maskViewPhoto').src=mask.image;$('#maskViewPhoto').alt='Photo du masque '+mask.catalogName+' provenant de la collection du musée';$('#maskViewIdentity').innerHTML='<b>'+esc(mask.people)+'</b><span>'+esc(mask.place)+' · '+esc(mask.regionName)+'</span><small>Nom du catalogue : '+esc(mask.catalogName)+'</small><small>'+esc(mask.nameNote)+'</small>';$('#maskViewDesc').textContent=mask.description;$('#maskViewContext').textContent='Région de visite du jeu : '+(region?region.name:mask.regionName)+'. Les villages disponibles sont des repères régionaux, pas une carte des territoires culturels.';const source=$('#maskViewSource');source.href=mask.url;source.textContent='Lire la notice officielle · '+mask.source;$('#maskViewRights').textContent=mask.rights;const go=$('#maskViewGoRegion');go.dataset.maskId=mask.id;go.textContent='Explorer '+(region?region.name:mask.regionName)+' sur la carte';maskReliefInstance&&maskReliefInstance.dispose();maskReliefInstance=null;$('#mask3d').parentElement.classList.remove('ready');modal.hidden=false;requestAnimationFrame(()=>{maskReliefInstance=LCA.maskRelief.create($('#mask3d'),mask.image)});$('#maskViewerClose').focus()}
+function closeMaskViewer(){const modal=$('#maskViewer');if(modal.hidden)return;modal.hidden=true;if(maskReliefInstance)maskReliefInstance.dispose();maskReliefInstance=null;if(maskFocusReturn&&maskFocusReturn.focus)maskFocusReturn.focus();maskFocusReturn=null}
+function exploreMaskRegion(maskId){const mask=MASKS.find(m=>m.id===(maskId||$('#maskViewGoRegion').dataset.maskId));if(!mask)return;const region=REGION_BY_ID[mask.region];closeMaskViewer();if(museumOpen)closeMuseumRoom();if(!region)return;if(!region.langs.includes(mapSel))mapSel=region.langs.find(id=>LANGS[id])||state.lang;openMap(region.id)}
+let museumGallery=null;
+const MUSEUM_INSTRUMENTS=window.LCA.museumInstruments||[],MUSEUM_EXHIBITS=MASKS.concat(MUSEUM_INSTRUMENTS);
+function showMuseumExhibit(item){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];$('#museumExhibitName').textContent=item.traditionalName;$('#museumExhibitIdentity').textContent=instrument?item.people+' · '+item.place:item.people+' · '+item.place+' · '+item.catalogName+' · '+item.nameNote;$('#museumExhibitDescription').textContent=item.description;const source=$('#museumExhibitSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#museumExhibitRights').textContent=item.rights;const inspect=$('#museumInspectMask');inspect.hidden=instrument;if(!instrument)inspect.dataset.maskId=item.id;const go=$('#museumExploreRegion');go.hidden=instrument;if(!instrument){go.dataset.maskId=item.id;go.textContent='Explorer '+(region?region.name:item.regionName)+' sur la carte'}$('#museumExhibits').innerHTML=MUSEUM_EXHIBITS.map(m=>'<button type="button" data-exhibit="'+esc(m.id)+'" aria-pressed="'+(m.id===item.id)+'">'+esc(m.traditionalName)+(m.kind==='instrument'?' · instrument':' · masque')+'</button>').join('')}
+function enterMaskMuseum(){if(museumOpen)return;closeMaskViewer();closeDialog();if(mapOpen)closeMap();if(tab)closePanel();setPause(false);museumOpen=true;$('#museumRoom').hidden=false;museumGallery&&museumGallery.dispose();museumGallery=LCA.maskRelief.createGallery($('#museumGallery3d'),MUSEUM_EXHIBITS,showMuseumExhibit);$('#museumRoomExit').focus()}
+function closeMuseumRoom(){if(!museumOpen)return;museumOpen=false;$('#museumRoom').hidden=true;if(museumGallery)museumGallery.dispose();museumGallery=null;P.x=38;P.z=-.5;P.y=0;P.vy=0;P.heading=0;P.yaw=0;near=null;camSnapReq=true;$('#act').hidden=true}
 let PAT='B.S.BSS.';
 function tTraditions(){
  const L=lang();PAT=L.drum.pat;
@@ -152,7 +173,7 @@ function quizSay(){}
 function renderPanel(){
  const keep=pbody.scrollTop;panel.classList.toggle('half',tab==='perso');
  $('#tabs').innerHTML=TABS.map(t=>'<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(t[0]===tab)+'">'+t[1]+'</button>').join('');
- pbody.innerHTML=({perso:tPerso,quetes:tQuetes,inventaire:tInventaire,contes:tContes,recettes:tRecettes,traditions:tTraditions,apprentissage:tApprendre})[tab]();
+ pbody.innerHTML=({perso:tPerso,quetes:tQuetes,inventaire:tInventaire,contes:tContes,recettes:tRecettes,traditions:tTraditions,musee:tMusee,apprentissage:tApprendre})[tab]();
  pbody.scrollTop=keep;
 }
 function markDock(){$$('#dock button').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.tab===tab)))}
@@ -185,7 +206,9 @@ pbody.addEventListener('click',e=>{
  if(t.closest('#drumBtn')){if(drumTimer)stopDrum();else startDrum();return}
  if((b=t.closest('[data-sv]'))){servings=Math.max(2,Math.min(12,servings+(+b.dataset.sv)));renderPanel();return}
  if((b=t.closest('[data-tale]'))){taleIdx=+b.dataset.tale;stopAudio();renderPanel();pbody.scrollTop=0;return}
- if((b=t.closest('[data-rec]'))){recIdx=+b.dataset.rec;renderPanel();pbody.scrollTop=0;return}
+ if((b=t.closest('[data-rec]'))){recIdx=+b.dataset.rec;cookSession=null;renderPanel();pbody.scrollTop=0;return}
+ if((b=t.closest('[data-mask]'))){openMaskViewer(MASKS[+b.dataset.mask],b);return}
+ if((b=t.closest('[data-animal]'))){if(b.dataset.animal)say(b.dataset.animal);return}
  if((b=t.closest('[data-mode]'))){learnMode=b.dataset.mode;if(learnMode==='quiz')newQuiz();renderPanel();pbody.scrollTop=0;if(learnMode==='quiz')quizSay();return}
  if((b=t.closest('[data-say]'))){say(lang().W[+b.dataset.say].wo);return}
  if((b=t.closest('[data-sayq]'))){say(lang().W[+b.dataset.sayq].wo);return}
@@ -193,10 +216,16 @@ pbody.addEventListener('click',e=>{
  if(false&&(b=t.closest('[data-opt]'))&&quiz&&quiz.picked===null){const o=+b.dataset.opt,q=quiz.qs[quiz.i];quiz.picked=o;if(o===q.i){quiz.score++;D().learned[q.i]=1}save();renderPanel();return}
  if((b=t.closest('[data-act]'))){const a=b.dataset.act;
   if(a==='closeperso'){closePanel();return}
+  if(a==='museumVisit'){enterMaskMuseum();return}
   if(a==='savename'){const i=$('#heroName');setName(i?i.value:'','#nameMsg');return}
   if(a==='lessons'){closePanel();LCA.learn.openHub();return}
   if(a==='dash'){closePanel();LCA.learn.openDash();return}
   if(a==='lab'){closePanel();LCA.labUI.open();return}
+  if(a==='cookBack'){cookSession=null;renderPanel();return}
+  if(a==='cookStart'){if(gotTypes()<4||!D().flags.delivered){toast('Apporte d’abord les quatre ingrédients à Fatou.');return}if(!R||R.is2d||!R.beginCook){toast('Active le rendu 3D pour cuisiner dans la scène.');return}beginCookSession();const r=lang().recipes[recIdx%lang().recipes.length];renderPanel();if(r&&r.ing[0])say('Fatou te guide. Ajoute '+r.ing[0][0]+'.','fr');return}
+  if(a==='cookAdd'){if(!R||R.is2d||!R.addIngredient){toast('Reprends la cuisine en rendu 3D.');return}const r=lang().recipes[cookSession.recipe],i=cookSession.item,item=r.ing[i];if(!item)return;R.addIngredient(i,r.ing.length);cookSession.item++;if(cookSession.item>=r.ing.length){cookSession.phase='steps';say('Très bien. Maintenant, préparons le plat. '+r.steps[0],'fr')}else{const next=r.ing[cookSession.item];say('Ajoute maintenant '+next[0]+'.','fr')}renderPanel();return}
+  if(a==='cookDo'){if(!R||R.is2d||!R.cookAction){toast('Reprends la cuisine en rendu 3D.');return}const r=lang().recipes[cookSession.recipe],step=r.steps[cookSession.step],g=cookGesture(step);R.cookAction(g[0]);cookSession.step++;if(cookSession.step>=r.steps.length){cookSession.phase='done';R.finishCook&&R.finishCook();flag('cooked');give('recette');toast('Le repas est prêt ! Fatou te remercie pour ton aide.')}else say('Ensuite, '+r.steps[cookSession.step],'fr');renderPanel();return}
+  if(a==='cookFinish'){cookSession=null;closePanel();toast('Le repas est prêt. Tu peux le partager avec le village.');return}
   if(a==='next'){quiz.i++;quiz.picked=null;if(quiz.i>=quiz.qs.length){const d=D();d.best=Math.max(d.best,quiz.score);save();check()}renderPanel();pbody.scrollTop=0;quizSay()}
   else if(a==='restart'){newQuiz();renderPanel();quizSay()}
   else if(a==='tale'){flag('tale');give('conte');renderPanel()}
@@ -365,10 +394,19 @@ function mapRedraw(root,focusId){const z=root.dataset.zoom||null;$('.mwrap',root
  if(focusId){const g=$('[data-map="'+focusId+'"]',root);if(g&&g.focus)try{g.focus({preventScroll:true})}catch(e){}}}
 function selectMap(root,id){mapSel=id;$('.minfo',root).innerHTML=mapInfo(id,root.dataset.ctx);mapRedraw(root,id)}
 function mapZoom(root,reg){root.dataset.zoom=reg||'';mapRedraw(root)}
-function openMap(){closeDialog();closePanel();setPause(false);mapOpen=true;mapSel=mapSel||state.lang;$('#mapBody').innerHTML=mapBlock('game',mapSel);$('#mapov').hidden=false;$('#langBtn').setAttribute('aria-expanded','true')}
+function openMap(focusRegion){closeDialog();closePanel();setPause(false);mapOpen=true;mapSel=mapSel||state.lang;$('#mapBody').innerHTML=mapBlock('game',mapSel,focusRegion||null);$('#mapov').hidden=false;$('#langBtn').setAttribute('aria-expanded','true')}
 function closeMap(){mapOpen=false;$('#mapov').hidden=true;$('#langBtn').setAttribute('aria-expanded','false')}
 $('#langBtn').onclick=()=>{mapOpen?closeMap():openMap()};
 $('#mapClose').onclick=closeMap;
+$('#maskViewerClose').onclick=closeMaskViewer;
+$('#maskViewGoRegion').onclick=exploreMaskRegion;
+$('#maskViewReset').onclick=()=>{if(maskReliefInstance)maskReliefInstance.reset()};
+$('#maskViewer').addEventListener('click',e=>{if(e.target===$('#maskViewer'))closeMaskViewer()});
+$('#maskViewer').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMaskViewer()}});
+$('#museumRoomExit').onclick=closeMuseumRoom;
+$('#museumInspectMask').onclick=()=>{const mask=MASKS.find(m=>m.id===$('#museumInspectMask').dataset.maskId);if(mask)openMaskViewer(mask,$('#museumInspectMask'))};
+$('#museumExploreRegion').onclick=()=>exploreMaskRegion($('#museumExploreRegion').dataset.maskId);
+$('#museumExhibits').addEventListener('click',e=>{const b=e.target.closest('[data-exhibit]');if(b&&museumGallery)museumGallery.selectById(b.dataset.exhibit)});
 /* recherche d'une langue par son nom : sélectionne la pastille et zoome sur sa région */
 document.addEventListener('change',e=>{const i=e.target.closest&&e.target.closest('.msearch');if(!i)return;const q=i.value.trim().toLowerCase();if(!q)return;const root=i.closest('.amap');if(!root)return;
  const L=Object.values(LANGS).find(l=>l.name.toLowerCase()===q)||Object.values(LANGS).find(l=>l.name.toLowerCase().startsWith(q));
@@ -423,7 +461,8 @@ function dialogFor(n){
  if(n.id==='fatou'){
   if(!d.flags.delivered){
    if(gotTypes()<4)return {wo,fr:'Bienvenue à mon étal ! Pour préparer le plat du jour, il me manque : '+needList()+'. Ramasse-les dans le village, ils brillent d’un anneau bleu.',go:'Je m’en occupe',on(){}};
-   return {wo,fr:'Tu as tout rapporté, merci ! Cuisinons ensemble : je te montre la recette.',go:'Donner les ingrédients',on(){flag('delivered');give('recette');openPanel('recettes')}}}
+   return {wo,fr:'Tu as tout rapporté, merci ! Installons-nous près du foyer : nous ajouterons les ingrédients un à un, puis tu m’aideras à piler, mélanger et faire mijoter le plat.',go:'Commencer à cuisiner',on(){flag('delivered');give('recette');const started=beginCookSession();openPanel('recettes');const r=lang().recipes[recIdx%lang().recipes.length];if(started&&r&&r.ing[0])say('Fatou te guide. Ajoute '+r.ing[0][0]+'.','fr')}}}
+  if(!d.flags.cooked)return {wo,fr:'Installons-nous près du foyer. Je vais te guider : ajoute chaque ingrédient, puis nous pilerons, mélangerons et ferons mijoter le plat ensemble.',go:cookSession?'Reprendre la préparation':'Commencer la cuisine',on(){const started=cookSession||beginCookSession();openPanel('recettes');const r=lang().recipes[recIdx%lang().recipes.length];if(started&&r&&r.ing[0])say('Fatou te guide. Ajoute '+r.ing[0][0]+'.','fr')}};
   return {wo,fr:'Le repas est prêt, assieds-toi avec nous ! Veux-tu revoir la recette ?',go:'Voir la recette',on(){openPanel('recettes')}}}
  if(n.id==='drum')return {wo,fr:'Écoute le '+L.drum.name+' : chaque rythme porte une histoire. Viens découvrir nos traditions et jouer avec moi.',go:'Découvrir',on(){openPanel('traditions')}};
  if(state.settings&&state.settings.kids)return {wo,fr:'Viens, on apprend des mots avec des images !',go:'On y va !',later:'Plus tard',on(){LCA.learn.startRecommended()}};
@@ -541,35 +580,36 @@ const back=(to,label)=>'<button class="back" data-m="'+to+'">← '+(label||'Reto
 function langCard(L,extra){return '<button class="lcard" data-pick="'+L.id+'"><span class="sw" style="background:'+L.color+'">'+L.code+'</span><span style="min-width:0"><b>'+L.name+'</b><small>'+L.where+'</small>'+stBadge(L)+(extra||'')+'</span></button>'}
 function voiceBox(){loadVoices();const cur=(state.settings&&state.settings.voice)||'';const opts='<option value="">Automatique (français, ou swahili pour les langues bantoues proches)</option>'+voiceList.map(v=>'<option value="'+esc(v.voiceURI)+'"'+(v.voiceURI===cur?' selected':'')+'>'+esc(v.name)+' ('+esc(v.lang)+')</option>').join('');
  return '<div class="trow" style="display:block"><b>Voix</b><small>Aucune voix native pour la plupart de ces langues dans le navigateur : on utilise une voix existante avec une écriture phonétique approchée. La prononciation reste approximative et non validée.</small><select id="voiceSel" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;background:var(--ink2);color:var(--fg);border:1px solid var(--line);padding:0 10px">'+opts+'</select><div class="row" style="margin-top:8px"><button class="btn ghost sm" data-m="testvoice">Tester : '+esc(lang().hello)+'</button></div>'+(voiceList.length?'':'<small style="display:block;margin-top:6px;color:var(--bad)">Aucune voix détectée sur ce navigateur.</small>')+'</div>'}
-/* ---- Profil et connexion (comptes locaux) ---- */
+/* ---- Profil local et authentification SQLite ---- */
 let accTab='login',accMsg='',accBusy=false,accConfirm=false;
-const ACC_ERR={bad:'Pseudo ou mot de passe incorrect.',short:'Trop court.',exists:'Ce pseudo existe déjà sur cet appareil.',storage:'Impossible d’écrire dans le stockage du navigateur (mode privé ou espace plein ?).',nocrypto:'Les mots de passe ne sont pas disponibles ici (navigateur sans chiffrement). Crée le profil sans mot de passe.',long:'Mot de passe trop long (64 caractères au plus).',unknown:'Profil introuvable.'};
+const ACC_ERR={bad:'Pseudo ou mot de passe incorrect.',bad_credentials:'Pseudo ou mot de passe incorrect.',short:'Trop court.',exists:'Ce pseudo existe déjà sur cet appareil.',name_taken:'Ce pseudo existe déjà dans la base SQLite.',bad_name:'Pseudo invalide : utilise 3 à 20 lettres, chiffres, espaces, apostrophes ou tirets.',bad_password:'Mot de passe : 8 à 200 caractères requis pour le compte SQLite.',consent_required:'Coche le consentement pour enregistrer le compte dans SQLite.',rate_limited:'Trop de tentatives. Attends un instant puis réessaie.',offline:'Le serveur SQLite ne répond pas. Vérifie que le serveur est lancé avec npm run dev.',storage:'Impossible d’écrire dans le stockage du navigateur (mode privé ou espace plein ?).',nocrypto:'Les mots de passe ne sont pas disponibles ici (navigateur sans chiffrement). Crée le profil sans mot de passe.',long:'Mot de passe trop long (64 caractères au plus).',unknown:'Profil introuvable.'};
 const accErr=r=>r.error==='locked'?'Trop d’essais. Réessaie dans '+r.wait+' s.':(r.error==='short'&&r.field==='pseudo'?'Pseudo : 3 caractères au moins (lettres, chiffres, espace, apostrophe, tiret).':r.error==='short'&&r.field==='pw'?'Mot de passe : 6 caractères au moins (ou laisse vide).':(ACC_ERR[r.error]||'Échec.'));
 function accCard(){
  if(!ACC)return '';
  const a=ACC.current(),n=heroName();
- return '<div class="acard">'+(a?'<span><b>'+esc(n||a.pseudo)+'</b><small>Profil local « '+esc(a.pseudo)+' » · progression séparée</small></span><button class="btn ghost sm" data-m="account">Mon profil</button>'
+ return '<div class="acard">'+(a?'<span><b>'+esc(n||a.pseudo)+'</b><small>'+(ACC.isOnline()?'Compte enregistré dans SQLite · progression sur cet appareil':'Profil local « '+esc(a.pseudo)+' » · progression séparée')+'</small></span><button class="btn ghost sm" data-m="account">Mon profil</button>'
   :'<span><b>'+(n?esc(n)+' · ':'')+'Mode invité</b><small>Ta progression est gardée sur cet appareil. Crée un profil pour en avoir plusieurs.</small></span><button class="btn ghost sm" data-m="account">Se connecter</button>')+'</div>'}
 function accountScreen(){
  if(!ACC)return back('home')+'<h2>Profil</h2><p class="note">Le stockage du navigateur est indisponible : pas de profils ici. Le jeu fonctionne mais ne sauvegarde pas.</p>';
  const a=ACC.current(),nm='<h3 class="sh">Nom du personnage</h3><div class="namerow"><input id="accName" type="text" maxlength="16" autocomplete="off" spellcheck="false" placeholder="Comment t’appelles-tu ?" value="'+esc(heroName())+'" aria-label="Nom du personnage"><button class="btn warm sm" data-acc="name">Valider</button></div>';
  const msg='<p class="sub" id="accMsg" role="status" aria-live="polite">'+esc(accMsg)+'</p>';
- const lim='<p class="note">Ces profils sont <b>locaux</b> : ils vivent dans ce navigateur, sur cet appareil, sans serveur. Ils ne se synchronisent pas entre appareils, et un mot de passe n’empêche pas quelqu’un qui utilise ton navigateur de lire les données. Vider les données du site efface les profils.</p>';
- if(a)return back('home')+'<h2>Mon profil</h2><div class="acard"><span><b>'+esc(a.pseudo)+'</b><small>Connecté · '+(a.hasPassword?'protégé par mot de passe':'sans mot de passe')+'</small></span></div>'+nm+msg+
+ const lim=ACC.onlineEnabled()?'<p class="note">Le pseudo et les données du compte sont enregistrés dans la base SQLite du serveur. La progression du jeu reste sur cet appareil pour le moment. Le serveur ne stocke jamais le mot de passe en clair.</p>':'<p class="note">Ces profils sont <b>locaux</b> : ils vivent dans ce navigateur, sur cet appareil, sans serveur. Ils ne se synchronisent pas entre appareils. Vider les données du site efface les profils.</p>';
+ if(a)return back('home')+'<h2>Mon profil</h2><div class="acard"><span><b>'+esc(a.pseudo)+'</b><small>'+(ACC.isOnline()?'Compte SQLite connecté':'Profil local · '+(a.hasPassword?'protégé par mot de passe':'sans mot de passe'))+'</small></span></div>'+nm+msg+
   '<div class="row" style="margin:12px 0"><button class="btn warm" data-acc="logout">Se déconnecter</button></div>'+
   '<h3 class="sh">Supprimer ce profil</h3>'+(accConfirm?'<div class="warnbox" role="alert"><b>Le profil et toute sa progression seront effacés.</b> La sauvegarde « invité » n’est pas touchée.'+(a.hasPassword?'<input id="accDelPw" type="password" autocomplete="current-password" placeholder="Mot de passe" aria-label="Mot de passe" style="margin-top:8px">':'')+'<div class="row"><button class="btn warm sm" data-acc="remove">Supprimer définitivement</button><button class="btn ghost sm" data-acc="cancel">Annuler</button></div></div>':'<div class="row"><button class="btn ghost sm" data-acc="confirmremove">Supprimer ce profil…</button></div>')+lim;
  const list=ACC.list();
  const tabs='<div class="seg" role="group" aria-label="Connexion ou création"><button data-acc="tab:login" aria-pressed="'+(accTab==='login')+'">Se connecter</button><button data-acc="tab:register" aria-pressed="'+(accTab==='register')+'">Créer un profil</button></div>';
  const known=list.length&&accTab==='login'?'<p class="sub" style="margin:10px 0 4px">Profils sur cet appareil :</p><div class="pills">'+list.map(x=>'<button data-acc="pick:'+esc(x.pseudo)+'">'+esc(x.pseudo)+(x.hasPassword?' 🔒':'')+'</button>').join('')+'</div>':'';
+ const cloud=ACC.onlineEnabled();
  const form=accTab==='login'
-  ?'<div class="accform"><label>Pseudo<input id="accPseudo" type="text" maxlength="20" autocomplete="username" spellcheck="false"></label><label>Mot de passe <small>(laisse vide si le profil n’en a pas)</small><input id="accPw" type="password" autocomplete="current-password"></label><div class="row"><button class="btn warm" data-acc="login">Se connecter</button></div></div>'+known
-  :'<div class="accform"><label>Pseudo <small>(3 à 20 caractères, sert à te reconnaître)</small><input id="accPseudo" type="text" maxlength="20" autocomplete="username" spellcheck="false"></label><label>Mot de passe <small>(facultatif, 6 caractères au moins)</small><input id="accPw" type="password" autocomplete="new-password"></label><label>Confirmer le mot de passe<input id="accPw2" type="password" autocomplete="new-password"></label>'+(ACC.guestHasData()?'<label class="chk"><input id="accImport" type="checkbox" checked> Reprendre ma progression d’invité dans ce profil <small>(la sauvegarde invité reste intacte)</small></label>':'')+'<div class="row"><button class="btn warm" data-acc="register">Créer le profil</button></div></div>';
+  ?'<div class="accform"><label>Pseudo<input id="accPseudo" type="text" maxlength="20" autocomplete="username" spellcheck="false"></label><label>Mot de passe<input id="accPw" type="password" autocomplete="current-password"></label><div class="row"><button class="btn warm" data-acc="login">Se connecter</button></div></div>'+known
+  :'<div class="accform"><label>Pseudo <small>(3 à 20 caractères, sert à te reconnaître)</small><input id="accPseudo" type="text" maxlength="20" autocomplete="username" spellcheck="false"></label><label>Mot de passe <small>'+(cloud?'8 caractères au moins':'facultatif, 6 caractères au moins')+'</small><input id="accPw" type="password" autocomplete="new-password"></label><label>Confirmer le mot de passe<input id="accPw2" type="password" autocomplete="new-password"></label>'+(cloud?'<label class="chk"><input id="accConsent" type="checkbox"> J’accepte l’enregistrement de mon pseudo et des données du compte dans SQLite. Le mot de passe est haché côté serveur.</label>':'')+(ACC.guestHasData()?'<label class="chk"><input id="accImport" type="checkbox" checked> Reprendre ma progression d’invité dans ce profil <small>(la sauvegarde invité reste intacte)</small></label>':'')+'<div class="row"><button class="btn warm" data-acc="register">Créer le profil</button></div></div>';
  return back('home')+'<h2>Profil</h2><div class="acard"><span><b>Mode invité</b><small>Tu joues sans profil. Tout est gardé sur cet appareil.</small></span></div>'+nm+tabs+form+msg+lim}
 async function accAction(act){
  if(!ACC||accBusy)return;
  const v=id=>{const e=$(id);return e?e.value:''};
  const say2=t=>{accMsg=t;const m=$('#accMsg');if(m)m.textContent=t};
- if(act==='name'){setName(v('#accName'),'#accMsg');accMsg=($('#accMsg')||{}).textContent||'';return}
+ if(act==='name'){setName(v('#accName'),'#accMsg');accMsg=($('#accMsg')||{}).textContent||'';if(ACC.isOnline()&&ONLINE_AUTH){try{await ONLINE_AUTH.auth.updateProfile({characterName:heroName()})}catch(e){accMsg='Nom gardé sur cet appareil, mais sa copie SQLite n’a pas pu être mise à jour.';if($('#accMsg'))$('#accMsg').textContent=accMsg}}return}
  if(act.indexOf('tab:')===0){accTab=act.slice(4);accMsg='';showWelcome('account');return}
  if(act.indexOf('pick:')===0){accTab='login';showWelcome('account');$('#accPseudo').value=act.slice(5);$('#accPw').focus();return}
  if(act==='confirmremove'){accConfirm=true;showWelcome('account');return}
@@ -582,11 +622,14 @@ async function accAction(act){
   if(act==='register'){
    const ps=v('#accPseudo'),pw=v('#accPw');
    if(pw!==v('#accPw2')){say2('Les deux mots de passe ne sont pas identiques.');return}
-   const e1=ACC.checkPseudo(ps);if(e1){say2(accErr({error:e1,field:'pseudo'}));return}
-   const e2=ACC.checkPassword(pw);if(e2){say2(accErr({error:e2,field:'pw'}));return}
+   const cloud=ACC.onlineEnabled();
+   const e1=cloud?(ps.trim().length<3||ps.trim().length>20?'short':null):ACC.checkPseudo(ps);if(e1){say2(accErr({error:e1,field:'pseudo'}));return}
+   if(cloud&&pw.length<8){say2(accErr({error:'bad_password'}));return}
+   const e2=cloud?null:ACC.checkPassword(pw);if(e2){say2(accErr({error:e2,field:'pw'}));return}
+   const consent=$('#accConsent');if(cloud&&(!consent||!consent.checked)){say2(accErr({error:'consent_required'}));return}
    const imp=$('#accImport');
    if(imp&&imp.checked)save();
-   const r=await ACC.register({pseudo:ps,password:pw,importGuest:!!(imp&&imp.checked)});
+   const r=await ACC.register({pseudo:ps,password:pw,importGuest:!!(imp&&imp.checked),consent:!!(consent&&consent.checked)});
    if(!r.ok){say2(accErr(r));return}
    /* nouveau profil vierge : le nom est celui de la sauvegarde importée, sinon vide */
    location.reload();return}
@@ -919,8 +962,8 @@ const IDL=LCA.idle.create();
 function nearSeat(){const LI=typeof lifeData==='function'?lifeData():null;if(!LI||!LI.st)return null;let b=null,bd=2.6;LI.st.forEach(s=>s.props.forEach(p=>{if(p.t!=='bench'&&p.t!=='stool')return;const d=Math.hypot(p.x-P.x,p.z-P.z);if(d<bd){bd=d;b=p}}));return b}
 let idleLast=0;
 function idleTick(dt0,moving,t){const nw=performance.now(),dt=idleLast?Math.min(1,(nw-idleLast)/1000):dt0;idleLast=nw;const act=moving||idleAct||frozen()||P.y>.02||welcomeOpen;idleAct=false;LCA.idle.update(IDL,dt,{active:act,canSit:!act&&!!nearSeat()});return LCA.idle.scaled(LCA.idle.pose(IDL,t))}
-let paused=false;
-const frozen=()=>!!tab||welcomeOpen||paused||mapOpen||travelBusy||(LCA.learn&&LCA.learn.isOpen())||(LCA.labUI&&LCA.labUI.isOpen());
+let paused=false,museumOpen=false;
+const frozen=()=>!!tab||welcomeOpen||paused||mapOpen||museumOpen||travelBusy||(LCA.learn&&LCA.learn.isOpen())||(LCA.labUI&&LCA.labUI.isOpen());
 function setPause(v){if(welcomeOpen)return;paused=v;$('#pause').hidden=!v;if(v){closeDialog();closePanel();stopAudio()}}
 $('#pauseBtn').onclick=()=>setPause(true);$('#pResume').onclick=()=>setPause(false);$('#pPerso').onclick=()=>{setPause(false);openPanel('perso')};
 $('#pLang').onclick=()=>{setPause(false);openMap()};
@@ -976,7 +1019,7 @@ function init3D(){
   const t=new THREE.CanvasTexture(cv);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(2,1);PT[i]=t;return t};
 
  /* sol */
- const paths=[[0,48,0,0],[-26,7,0,2],[0,2,27,2],[0,0,-18,-11],[0,0,23,-17],[0,0,0,-58]];
+ const paths=[[0,48,0,0],[-26,7,0,2],[0,2,27,2],[0,0,-18,-11],[0,0,23,-17],[0,0,0,-58],[23,-17,48,-17],[27,2,38,-1.35]];
  const dseg=(px,pz,s)=>{const ax=s[0],az=s[1],dx=s[2]-ax,dz=s[3]-az,t=clamp(((px-ax)*dx+(pz-az)*dz)/(dx*dx+dz*dz),0,1);return Math.hypot(px-ax-t*dx,pz-az-t*dz)};
  const minPath=(x,z)=>Math.min(...paths.map(p=>dseg(x,z,p)));
  const gg=new THREE.PlaneGeometry(340,340,150,150);gg.rotateX(-Math.PI/2);gg.translate(0,0,-40);
@@ -1052,6 +1095,32 @@ function init3D(){
  hut(-24,-17,1.5,.3,'Maison des contes',1);
  const mur=new THREE.Mesh(new THREE.PlaneGeometry(3.4,.9),new THREE.MeshLambertMaterial({map:patTex(1)}));mur.position.set(-24+Math.sin(.3)*3.45,1.9,-17+Math.cos(.3)*3.45);mur.rotation.y=.3;scene.add(mur);
 
+ /* Musée permanent : maison à cour et porte interactive, identique dans chaque village. */
+ const museumBuilding=new THREE.Group(),museumWall=M(0xc69b63),museumTrim=M(0xead19a),museumWood=M(0x654126),museumDark=M(0x33251b);
+ const mf=new THREE.Mesh(new THREE.CylinderGeometry(6.25,6.5,.42,16),M(0x8e6844));mf.position.y=.21;museumBuilding.add(mf);
+ const mb=(w,h,d,m,x,y,z)=>{const o=box(w,h,d,m);o.position.set(x,y,z);museumBuilding.add(o);return o};
+ mb(10.5,.32,7.7,museumTrim,0,.48,0);
+ mb(10.5,4.4,.34,museumWall,0,2.72,-3.65);mb(.34,4.4,7.3,museumWall,-5.08,2.72,0);mb(.34,4.4,7.3,museumWall,5.08,2.72,0);
+ mb(3.85,4.4,.34,museumWall,-3.3,2.72,3.65);mb(3.85,4.4,.34,museumWall,3.3,2.72,3.65);mb(2.8,2.1,.34,museumWall,0,3.87,3.65);
+ mb(2.16,2.24,.13,museumDark,0,1.63,3.47);mb(2.42,.18,.2,museumTrim,0,2.82,3.47);
+ [-1.6,1.6].forEach(x=>{mb(.22,2.75,.26,museumWood,x,1.84,3.49);mb(.48,.22,.42,museumTrim,x,3.18,3.49);mb(.42,.2,.42,museumTrim,x,.63,3.49)});
+ [-3.65,3.65].forEach(x=>{mb(1.15,1.2,.06,M(0x55706a),x,2.9,3.44);mb(1.35,.12,.08,museumTrim,x,2.9,3.4);mb(.12,1.32,.08,museumTrim,x,2.9,3.4)});
+ mb(5.5,.24,.28,museumWood,0,4.93,3.6);
+ const mroof=new THREE.Mesh(new THREE.ConeGeometry(7.4,2.5,4),M(0x7b4930));mroof.position.y=6.08;mroof.rotation.y=Math.PI/4;museumBuilding.add(mroof);
+ for(let i=-4;i<=4;i++)mb(.1,.1,7.5,museumWood,i*1.15,4.96,0);
+ const msign=label('MUSÉE DES MASQUES',6.3);msign.position.set(0,5.65,3.88);museumBuilding.add(msign);
+ [-1.25,1.25].forEach(x=>{const step=box(1.65,.2,.65,museumWood);step.position.set(x*.35,.1,4.02);museumBuilding.add(step)});
+ museumBuilding.position.set(38,0,-5);shade(museumBuilding,true);scene.add(museumBuilding);
+ /* L’allée centrale de la façade reste libre; les collisions suivent les murs. */
+ [[0,-8.35,4.8],[-5,-5,2.2],[5,-5,2.2],[-3.35,3.65,1.25],[3.35,3.65,1.25]].forEach(([x,z,r])=>addColl(38+x,-5+z,r));
+ const museumDoor=new THREE.Group();museumDoor.position.set(38,0,-1.35);const museumHit=new THREE.Mesh(new THREE.PlaneGeometry(2.4,2.8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));museumHit.position.y=1.4;museumDoor.add(museumHit);scene.add(museumDoor);
+ const museumLabel=label('Musée des masques · visite libre',7.2);museumLabel.position.set(38,7.7,-1.05);scene.add(museumLabel);
+ /* Panneau de carrefour : placé en bord de l’allée, il pointe vers la branche qui mène au musée. */
+ const museumWayfinding=new THREE.Group(),wayPost=box(.2,2.8,.2,museumWood),wayBoard=box(4.9,1.02,.22,museumWood),wayTrim=box(4.72,.1,.12,museumTrim);
+ wayPost.position.y=1.25;wayBoard.position.set(0,2.15,0);wayTrim.position.set(0,2.58,.13);museumWayfinding.add(wayPost,wayBoard,wayTrim);
+ const wayText=label('MUSÉE  →',4.5);wayText.position.set(0,2.18,.18);museumWayfinding.add(wayText);
+ museumWayfinding.position.set(27.4,0,.55);scene.add(museumWayfinding);
+
  /* école */
  const school=new THREE.Group();const sb=soft(9,3.2,5.5,M(0xd3b68c),9);sb.position.y=1.6;school.add(sb);
  const sr=new THREE.Mesh(new THREE.ConeGeometry(6.8,2.4,4),M(0x8f4b2b));sr.position.y=4.4;sr.rotation.y=Math.PI/4;school.add(sr);
@@ -1123,7 +1192,7 @@ function init3D(){
  function banana(x,z){const g=new THREE.Group();for(let k=0;k<6;k++){const lf=new THREE.Mesh(new THREE.PlaneGeometry(.7,2.6),new THREE.MeshLambertMaterial({color:k%2?0x4f9a30:0x5aa838,side:THREE.DoubleSide}));lf.position.y=1.7;lf.rotation.y=k*1.05;lf.rotateX(-.7);lf.translateY(.9);g.add(lf)}
   const tk=new THREE.Mesh(new THREE.CylinderGeometry(.12,.16,1.8,6),M(0x8aa04a));tk.position.y=.9;g.add(tk);g.position.set(x,0,z);shade(g);g.userData.inter={type:'tree',name:'Bananier',re:/^arbre/i,h:3};FL.banana.add(g);addColl(x,z,.4,FL.banana)}
  [[-34,16],[-36,20],[46,28],[48,24],[-20,-40],[-33,-38]].forEach(p=>banana(p[0],p[1]));
- const specials=[[-5,-24],[4,-44],[38,36],[-19,-10],[-22,6],[24,1],[24,-17],[0,0],[0,-55],[13,-9],[30,-26],[-24,-17],[-22,8.6],[-12,-1],[-30,-2],[-8,25]];
+ const specials=[[-5,-24],[4,-44],[38,36],[-19,-10],[-22,6],[24,1],[24,-17],[0,0],[0,-55],[38,-5],[13,-9],[30,-26],[-24,-17],[-22,8.6],[-12,-1],[-30,-2],[-8,25]];
  let placed=0,tries=0;
  while(placed<22&&tries<400){tries++;const tx=(rnd()-.5)*130,tz=-52+rnd()*92;
   if(Math.hypot(tx,tz)<12)continue;let bad=false;
@@ -1270,7 +1339,7 @@ function init3D(){
  SPOTS.forEach(s=>{s.p=new V(s.pos[0],0,s.pos[1]);const rg=new THREE.Mesh(new THREE.TorusGeometry(1.3,.06,8,32),ringMat);rg.rotation.x=Math.PI/2;rg.position.set(s.pos[0],.5,s.pos[1]);scene.add(rg);rings.push(rg)});
 
  /* ===== vie du village (v0.17) : marché, cuisine, atelier, banc, jeux, feu du soir ; habitants avec routines ===== */
- const LIFE={st:[],people:[],anim:[],fires:[]};
+ const LIFE={st:[],people:[],anim:[],fires:[],tools:[]};
  {const LF=window.LCA.life;if(LF){
   const softTex=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,'rgba(255,255,255,1)');g.addColorStop(.4,'rgba(255,255,255,.4)');g.addColorStop(1,'rgba(255,255,255,0)');x.fillStyle=g;x.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
   const PAL=[0xd4513b,0xe0a020,0x2f9e8f,0x3a6ea5,0x9a4fa0],FRU=[0xe8a317,0xd4513b,0x7ac043,0xf2d24a,0x8a3a8a],WOOD=0x6b4a2a;
@@ -1288,10 +1357,16 @@ function init3D(){
    mat(p){const g=new THREE.Group(),s=p.s||1,d=cyl(.95*s,.95*s,.04,M(PAL[(p.c||0)%5]),20);d.position.y=.03;g.add(d);const r=new THREE.Mesh(new THREE.TorusGeometry(.78*s,.03,5,24),M(0xf2d98a));r.rotation.x=Math.PI/2;r.position.y=.055;g.add(r);return g},
    stool(p){const g=new THREE.Group(),t=cyl(.3,.3,.08,M(0x8a5a30),10);t.position.y=.46;g.add(t);[0,2.1,4.2].forEach(a=>{const l=cyl(.04,.04,.46,M(WOOD),5);l.position.set(Math.cos(a)*.2,.23,Math.sin(a)*.2);g.add(l)});shade(g);return g},
    bench(p){const g=new THREE.Group(),s=p.s||1,seat=box(2.4*s,.12,.6,M(0x8a5a30));seat.position.y=.5;g.add(seat);[-1,1].forEach(k=>{const l=box(.12,.5,.5,M(WOOD));l.position.set(k*1.0*s,.25,0);g.add(l)});shade(g,true);addColl(p.x,p.z,1.1);return g},
-   mortar(p){const g=new THREE.Group(),m=cyl(.3,.22,.55,M(0x7a5a30),10);m.position.y=.28;g.add(m);const pe=cyl(.05,.05,1.1,M(0xc9a15a),6);pe.position.set(.1,.85,0);pe.rotation.z=.12;g.add(pe);shade(g);return g},
+   mortar(p){const g=new THREE.Group(),m=cyl(.3,.22,.55,M(0x7a5a30),10);m.position.y=.28;g.add(m);const pe=cyl(.05,.05,1.1,M(0xc9a15a),6);pe.position.set(.1,.85,0);pe.rotation.z=.12;g.add(pe);LIFE.tools.push({kind:'mortar',group:g,pestle:pe,base:.85,active:false});shade(g);return g},
    firepot(p){const g=new THREE.Group();g.add(log(-.25,.1,.3),log(.25,.1,-.3),log(0,-.2,1.5));const fl=new THREE.Mesh(new THREE.ConeGeometry(.2,.55,7),new THREE.MeshBasicMaterial({color:0xffa21a,transparent:true,opacity:.9}));fl.position.y=.35;g.add(fl);
-    const pot=soft(.9,.8,.9,M(0x3a2f2a));pot.position.y=.95;g.add(pot);const lid=cyl(.34,.34,.06,M(0x5a4a40),10);lid.position.y=1.38;g.add(lid);
-    const st=sprite(0xe8eef0,1.1);st.position.y=1.9;st.material.opacity=.5;g.add(st);LIFE.fires.push({fl,st,kind:'cook',phase:Math.random()*6});shade(g);addColl(p.x,p.z,.8);return g},
+    const potMat=M(0x3a2f2a),wall=new THREE.Mesh(new THREE.CylinderGeometry(.72,.57,.84,14,1,true),potMat);wall.position.y=.83;g.add(wall);const base=cyl(.57,.57,.09,potMat,14);base.position.y=.42;g.add(base);const rim=new THREE.Mesh(new THREE.TorusGeometry(.69,.065,7,18),M(0x5a4a40));rim.rotation.x=Math.PI/2;rim.position.y=1.27;g.add(rim);
+    const soup=cyl(.52,.52,.055,new THREE.MeshStandardMaterial({color:0x99602d,roughness:.42,metalness:.08}));soup.position.y=1.19;soup.visible=false;g.add(soup);
+    const colors=[0xe4aa2f,0x62a747,0xd55432,0xf0dcb0,0xf1c24b,0x9d4c32,0x74a83b,0xe8e0cf],foods=Array.from({length:18},(_,i)=>{const f=new THREE.Mesh(new THREE.SphereGeometry(.09+(i%3)*.012,9,7),M(colors[i%colors.length]));const a=i*2.4,r=.12+(i%3)*.1;f.position.set(Math.cos(a)*r,1.27,Math.sin(a)*r);f.visible=false;g.add(f);return f});
+    const spoon=new THREE.Group(),shaft=cyl(.035,.035,.9,M(0xc9a15a),7);shaft.position.set(.25,1.42,.12);shaft.rotation.z=-.35;spoon.add(shaft);spoon.visible=false;g.add(spoon);
+    const pourer=new THREE.Group(),cup=cyl(.2,.25,.34,M(0xb58b54),10),handle=new THREE.Mesh(new THREE.TorusGeometry(.13,.025,6,12),M(0xb58b54)),spout=cyl(.045,.08,.3,M(0xb58b54),8);cup.position.y=.17;handle.position.set(-.2,.18,0);spout.rotation.z=Math.PI/2;spout.position.set(.23,.12,0);pourer.add(cup,handle,spout);pourer.position.set(-.9,1.0,.2);pourer.visible=false;g.add(pourer);
+    const stream=new THREE.Mesh(new THREE.CylinderGeometry(.025,.045,.55,8),new THREE.MeshBasicMaterial({color:0x89d4f4,transparent:true,opacity:.8}));stream.position.set(-.38,1.25,.2);stream.visible=false;g.add(stream);
+    const plate=new THREE.Group(),dish=cyl(.46,.46,.06,M(0xe8d9b8),18);dish.position.y=.06;plate.add(dish);const meal=cyl(.28,.28,.12,M(0xe4aa2f),14);meal.position.y=.15;plate.add(meal);plate.position.set(1.25,.02,.2);plate.visible=false;g.add(plate);
+    const st=sprite(0xe8eef0,1.1);st.position.y=1.9;st.material.opacity=.5;g.add(st);LIFE.fires.push({fl,st,kind:'cook',group:g,soup,foods,spoon,pourer,stream,plate,phase:Math.random()*6});shade(g);addColl(p.x,p.z,.8);return g},
    fire(p){const g=new THREE.Group();[0,1.05,2.1].forEach(a=>g.add(log(Math.cos(a)*.3,Math.sin(a)*.3,a)));const fl=new THREE.Mesh(new THREE.ConeGeometry(.3,.85,7),new THREE.MeshBasicMaterial({color:0xff9a1a,transparent:true,opacity:.92}));fl.position.y=.5;g.add(fl);
     const gl=sprite(0xffb050,4.4);gl.position.y=.9;gl.material.blending=THREE.AdditiveBlending;g.add(gl);LIFE.fires.push({fl,gl,kind:'fire',phase:Math.random()*6});addColl(p.x,p.z,.7);return g},
    wheel(p){const g=new THREE.Group(),b=cyl(.45,.55,.45,M(0x8a5a30),10);b.position.y=.22;g.add(b);const t=cyl(.5,.5,.06,M(0xa07040),12);t.position.y=.5;g.add(t);const pot=soft(.5,.4,.5,M(0xb5532a));pot.position.y=.75;g.add(pot);shade(g);LIFE.anim.push({t:'spin',o:t});LIFE.anim.push({t:'spin',o:pot});addColl(p.x,p.z,.6);return g},
@@ -1373,8 +1448,9 @@ function init3D(){
   return g}
  const picks=PICK_DEF.map((p,i)=>{const g=new THREE.Group();const m=pickModel(p[0]);g.add(m);g.position.set(p[1],.9,p[2]);const rg=new THREE.Mesh(new THREE.TorusGeometry(.7,.05,8,28),ringMat);rg.rotation.x=Math.PI/2;rg.position.y=-.8;g.add(rg);
   const gl=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0x66ccff,transparent:true,opacity:.7,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}));gl.scale.set(2.2,2.2,1);g.add(gl);
-  shade(m);scene.add(g);return {t:p[0],i,g,m,x:p[1],z:p[2],got:false}});
- const syncPickups=()=>{const pk=D().picked;picks.forEach(p=>{p.got=!!pk[p.i];p.g.visible=!p.got})};
+  const tag=label(LCA.animals.itemLabel(p[0],lang()),3.5);tag.position.set(0,1.65,0);tag.visible=false;g.add(tag);
+  shade(m);scene.add(g);return {t:p[0],i,g,m,tag,x:p[1],z:p[2],got:false}});
+ const syncPickups=()=>{const pk=D().picked;picks.forEach(p=>{p.got=!!pk[p.i];p.g.visible=!p.got;p.tag.visible=false})};
  pickTarget=()=>{const d=D();let best=null,bd=1e9;picks.forEach(p=>{if(p.got||d.got[p.t])return;const dd=Math.hypot(P.x-p.x,P.z-p.z);if(dd<bd){bd=dd;best=p}});return best?{x:best.x,z:best.z}:null};
 
  /* balise de quête */
@@ -1467,7 +1543,8 @@ function init3D(){
  const splash=new THREE.Mesh(new THREE.TorusGeometry(.5,.04,6,20),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.7}));splash.rotation.x=Math.PI/2;splash.visible=false;scene.add(splash);
  reg(fire,{type:'fire',name:'le feu',re:/^feu/i,key:1,msg:'Le feu crépite et monte.'});
  reg(mort,{type:'mortar',name:'le mortier',key:1,msg:'On pile le grain : toc, toc, toc.'});reg(pest,{type:'mortar',name:'le mortier',key:1,msg:'On pile le grain : toc, toc, toc.'});
- const INTER_ROOTS=[well,fieldG,fire,mort,pest];
+ reg(museumDoor,{type:'museum',name:'la porte du musée',nr:4.2,msg:'Tu franchis la porte du musée des masques.'});
+ const INTER_ROOTS=[well,fieldG,fire,mort,pest,museumDoor];
  /* sails sur les pirogues (nord et est) */
  const sails=boats.map(b=>{const sg=new THREE.Group();const ms=box(.07,3.2,.07,M(0x5d3a1e));ms.position.y=1.8;sg.add(ms);const sl=new THREE.Mesh(new THREE.ConeGeometry(1.3,3,3),new THREE.MeshLambertMaterial({color:0xf4efe0,side:THREE.DoubleSide}));sl.scale.z=.05;sl.position.set(.1,1.9,0);sl.rotation.y=Math.PI/2;sg.add(sl);sg.visible=false;b.add(sg);return sg});
 
@@ -1496,7 +1573,7 @@ function init3D(){
   fireLight.color.setHex(id==='nord'?0xffb060:0xff8a30);
   R&&(R.th=th)}
  /* --- interactions --- */
- let fireK=1,wellT=0,mortT=0,fieldT=0;
+ let fireK=1,wellT=0,mortT=0,fieldT=0,cookBeat=0,cookStir=0;
  function findInter(o){while(o){if(o.userData&&o.userData.inter)return o;o=o.parent}return null}
  const interObj=new WeakMap();
  function nearInter(px,pz){let best=null,bd=99;INTER_ROOTS.forEach(r=>{if(!isVis(r))return;const d=Math.hypot(px-r.position.x,pz-r.position.z),lim=r.userData.inter.nr||3.6;if(d<lim&&d<bd){bd=d;let o=interObj.get(r);if(!o){o={inter:true,root:r,name:r.userData.inter.name,r:0};interObj.set(r,o)}best=o}});return best}
@@ -1505,12 +1582,15 @@ function init3D(){
   if(Math.hypot(P.x-wp.x,P.z-wp.z)>12){toast('Rapproche-toi : '+it.name);return}
   let msg=it.msg||'';
   if(it.type==='tree'){root.userData.shake=1.6;if(SHAKERS.indexOf(root)<0)SHAKERS.push(root);let n=0;for(const lf of LEAVES){if(lf.t>=2.6&&n<9){lf.t=0;lf.vx=(Math.random()-.5)*1.6;lf.vz=(Math.random()-.5)*1.6;lf.ph=Math.random()*6;lf.m.position.set(wp.x+(Math.random()-.5)*2,(it.h||5)*.9,wp.z+(Math.random()-.5)*2);lf.m.visible=true;n++}}msg='Tu secoues '+(it.name==='Acacia'?'l’acacia':'l’arbre')+' : des feuilles tombent.'}
+  else if(it.type==='museum'){enterMaskMuseum();return}
   else if(it.type==='well')wellT=3;else if(it.type==='mortar')mortT=3;else if(it.type==='fire')fireK=2.1;else if(it.type==='field')fieldT=2.4;
   const wi=it.re?frWord(it.re):-1;
   if(wi>=0){const w=lang().W[wi];const d=D();if(!d.learned[wi]){d.learned[wi]=1;save();check()}msg=(msg?msg+' ':'')+w.wo+' : '+w.fr.toLowerCase();say(w.wo)}
   toast(msg||it.name)}
  function tick(dt,t){
   WU.t.value=t;WU.p.value.set(P.x,0,P.z);
+  if(cookBeat>0){cookBeat-=dt;const k=Math.max(0,cookBeat/2.8),u=R.player&&R.player.userData;if(u){u.armR.rotation.x=-1.25+Math.sin(t*10)*.48*k;u.armR.rotation.z=-.2-Math.sin(t*10)*.2*k;u.armL.rotation.x=-.82+Math.sin(t*10+1)*.2*k}LIFE.fires.filter(f=>f.kind==='cook').forEach(f=>{f.fl.scale.setScalar(1+.5*k);f.st.material.opacity=Math.min(1,.9*k);if(f.actionType==='stir')f.spoon.rotation.y=Math.sin(t*9)*.6*k;if(f.actionType==='pour'){f.pourer.rotation.z=-.8*k;f.stream.visible=k>.15;f.stream.scale.y=Math.max(.1,k)}else{f.pourer.rotation.z=0;f.stream.visible=false}})}else if(R.player&&R.player.userData){R.player.userData.armR.rotation.x=0;R.player.userData.armL.rotation.x=0;R.player.userData.armR.rotation.z=0;LIFE.tools.forEach(q=>{q.active=false;q.pestle.position.y=q.base});LIFE.fires.filter(f=>f.kind==='cook').forEach(f=>{f.pourer.rotation.z=0;f.stream.visible=false})}
+  LIFE.fires.filter(f=>f.kind==='cook'&&f.soup).forEach(f=>{f.soup.scale.y=1+.08*Math.sin(t*6+f.phase);f.foods.forEach((o,i)=>{if(!o.visible)return;if(f.drop&&f.drop.food===o){f.drop.age+=dt;const k=Math.min(1,f.drop.age/.55);o.position.y=3.1-1.8*(k*k*(3-2*k));if(k>=1)f.drop=null}else o.position.y=1.27+Math.abs(Math.sin(t*5+i+f.phase))*.035;o.rotation.y=t*.7+i});if(f.actionType==='pound'&&cookBeat>0)LIFE.tools.forEach(q=>{if(q.active)q.pestle.position.y=q.base+Math.sin(t*15)*.24})});
   for(let i=SHAKERS.length-1;i>=0;i--){const c=SHAKERS[i];c.userData.shake-=dt;if(c.userData.shake<=0){c.rotation.z=0;c.rotation.x=0;SHAKERS.splice(i,1)}else{const k=c.userData.shake/1.6;c.rotation.z=Math.sin(t*26)*.05*k;c.rotation.x=Math.cos(t*22)*.03*k}}
   LEAVES.forEach(lf=>{if(lf.t<2.6){lf.t+=dt;lf.m.position.y-=dt*1.5;lf.m.position.x+=lf.vx*dt+Math.sin(t*3+lf.ph)*.01;lf.m.position.z+=lf.vz*dt;lf.m.rotation.set(t*3+lf.ph,t*2,t);if(lf.t>=2.6||lf.m.position.y<.05)lf.m.visible=false}});
   /* puits, mortier, champ, feu */
@@ -1537,10 +1617,10 @@ function init3D(){
   mists.forEach((m,i)=>{m.position.x+=Math.sin(t*.1+i)*dt*.8})}
  paintGround(THEMES.ouest);
  const tapRoots=()=>{const out=[];[FL.baobab,FL.palm,FL.banana,FL.acacia,TX.est,TX.centrale].forEach(g=>{if(g.visible)g.children.forEach(c=>{if(c.userData&&c.userData.inter)out.push(c)})});INTER_ROOTS.forEach(r=>{if(isVis(r))out.push(r)});return out};
- const applyLang=()=>{const L=lang();LCA.animals.cur=L;applyTheme(L.region);NPC_DATA.forEach(d=>setLabel(labels[d.id],L.names[d.id]));ANTAGS.forEach(a=>setLabel(a.lb,LCA.animals.label(a.type,L)));drawBoard(L.board[0],L.board[1],'1   2   3   4   5');syncPickups()};
+ const applyLang=()=>{const L=lang();LCA.animals.cur=L;applyTheme(L.region);NPC_DATA.forEach(d=>setLabel(labels[d.id],L.names[d.id]));ANTAGS.forEach(a=>setLabel(a.lb,LCA.animals.label(a.type,L)));picks.forEach(p=>setLabel(p.tag,LCA.animals.itemLabel(p.t,L)));drawBoard(L.board[0],L.board[1],'1   2   3   4   5');syncPickups()};
  const adapt=pf=>{grass.count=Math.max(1,Math.round(GN*pf.density));bushes.count=Math.max(1,Math.round(BN*pf.density));reeds.count=Math.max(1,Math.round(RN*pf.density));flw.count=Math.max(1,Math.round(NF*pf.density));rocks.count=Math.max(1,Math.round(60*pf.density));R.cull=pf.cull;scene.fog.far=pf.fogFar;if(pf.cull===Infinity)treeList.forEach(c=>{c.visible=true})};
  const treeList=Object.values(FL).flatMap(g=>g.children);
- R={syncRemote,adapt,treeList,cull:Infinity,applyTheme,tick,triggerInter,nearInter,tapRoots,findInter,th:THEMES.ouest,fireK:1,rebuildPlayer(){scene.remove(R.player);R.player.traverse(o=>{if(o.geometry)o.geometry.dispose()});R.player=person(avOpts(),1);scene.add(R.player);addTag(R.player)},setHeroName(){addTag(R.player)},renderer,scene,camera,player,sun,hemi,sunB,ANTAGS,rings,WAND,life:LIFE,walkAnim,THREE,V,HUTS,picks,syncPickups,applyLang,beacon,bring,clouds,water,wgeo,wbase,fire,flame,flame2,fireLight,boats,birds,flies,ffs,ffb,ffp,puffs,halo,glint,cloths:R0.cloths||[],ch};
+ R={syncRemote,adapt,treeList,cull:Infinity,applyTheme,tick,triggerInter,nearInter,tapRoots,findInter,beginCook(){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(!f)return;const p=f.group.position;P.x=p.x+2.1;P.z=p.z+1.2;P.y=0;P.vy=0;P.heading=Math.atan2(p.x-P.x,p.z-P.z);P.yaw=Math.atan2(P.x-p.x,P.z-p.z);f.foods.forEach(o=>{o.visible=false});f.soup.visible=false;f.spoon.visible=false;f.pourer.visible=false;f.stream.visible=false;f.plate.visible=false;f.drop=null;f.actionType='';LIFE.tools.forEach(q=>{q.active=false;q.pestle.position.y=q.base});cookBeat=0},addIngredient(index){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(!f)return;const o=f.foods[index%f.foods.length];o.visible=true;o.position.y=3.1;f.drop={food:o,age:0};f.soup.visible=true;f.actionType='add';cookBeat=2.8},cookAction(type){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(!f)return;LIFE.tools.forEach(q=>{q.active=false;q.pestle.position.y=q.base});const tool=type==='pound'?LIFE.tools.find(q=>q.kind==='mortar'):null,target=tool&&tool.group?tool.group.position:f.group.position;P.x=target.x+2.1;P.z=target.z+1.2;P.heading=Math.atan2(target.x-P.x,target.z-P.z);P.yaw=Math.atan2(P.x-target.x,P.z-target.z);if(tool)tool.active=true;f.actionType=type;f.spoon.visible=type==='stir';f.pourer.visible=type==='pour';f.plate.visible=type==='serve';f.stream.visible=false;if(type==='simmer')fireK=2.1;cookBeat=2.8},finishCook(){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(f){f.plate.visible=true;f.spoon.visible=false;f.pourer.visible=false;f.stream.visible=false}},th:THEMES.ouest,fireK:1,rebuildPlayer(){scene.remove(R.player);R.player.traverse(o=>{if(o.geometry)o.geometry.dispose()});R.player=person(avOpts(),1);scene.add(R.player);addTag(R.player)},setHeroName(){addTag(R.player)},renderer,scene,camera,player,sun,hemi,sunB,ANTAGS,rings,WAND,life:LIFE,walkAnim,THREE,V,HUTS,picks,syncPickups,applyLang,beacon,bring,clouds,water,wgeo,wbase,fire,flame,flame2,fireLight,boats,birds,flies,ffs,ffb,ffp,puffs,halo,glint,cloths:R0.cloths||[],museumPos:{x:38,z:-5},ch};
  applyLang();spawnPlayer();
 
  /* contrôles */
@@ -1566,9 +1646,10 @@ function leaveMenu(){if(!state.started&&!anyProgress())return;welcomeOpen=false;
 $('#menuBtn').onclick=()=>{if(welcomeOpen)leaveMenu();else openMenu()};
 window.addEventListener('keydown',e=>{const k=e.key.toLowerCase();
  if(e.target&&/^(select|input|textarea)$/i.test(e.target.tagName))return;
+ if(museumOpen&&k!=='escape')return;
  if(k==='m'&&!e.ctrlKey&&!e.metaKey){if(welcomeOpen)leaveMenu();else openMenu();return}
  if(welcomeOpen){if(k==='escape'&&menuScreen!=='home'){showWelcome(menuScreen==='prep'?'regions':menuScreen==='detail'?(menuMode==='regions'?'regions':menuMode==='learn'?'learn':'new'):'home')}return}
- if(k==='escape'){if(mapOpen){closeMap();return}if(paused)setPause(false);else if(dlg)closeDialog();else if(tab)closePanel();else setPause(true);return}
+ if(k==='escape'){if(!$('#maskViewer').hidden){closeMaskViewer();return}if(museumOpen){closeMuseumRoom();return}if(mapOpen){closeMap();return}if(paused)setPause(false);else if(dlg)closeDialog();else if(tab)closePanel();else setPause(true);return}
  if(k==='p'){setPause(!paused);return}
  if(k==='e'&&dlg&&!frozen()){$('#dlgGo').click();return}
  if(k==='e'&&!frozen()&&near){useNear(near);return}
@@ -1602,8 +1683,8 @@ function drawMini(t){
  mx.clearRect(0,0,S,S);mx.save();mx.beginPath();mx.arc(cx,cy,cx-3,0,6.283);mx.clip();
  mx.fillStyle=R.th.mini[0];mx.fillRect(0,0,S,S);mx.fillStyle=R.th.mini[1];mx.fillRect(0,0,S,Math.max(0,Y(-62)));
  mx.strokeStyle='#dba66a';mx.lineWidth=5*sc/2;mx.lineCap='round';
- [[0,48,0,0],[-26,7,0,2],[0,2,27,2],[0,0,-18,-11],[0,0,23,-17],[0,0,0,-58]].forEach(p=>{mx.beginPath();mx.moveTo(X(p[0]),Y(p[1]));mx.lineTo(X(p[2]),Y(p[3]));mx.stroke()});
- mx.fillStyle='#'+('000000'+R.th.hut.w[0].toString(16)).slice(-6);R.HUTS.forEach(h=>{mx.beginPath();mx.arc(X(h.x),Y(h.z),Math.max(4.5,h.s*3.6),0,6.283);mx.fill();mx.strokeStyle='rgba(40,20,8,.55)';mx.lineWidth=1.5;mx.stroke()});
+ [[0,48,0,0],[-26,7,0,2],[0,2,27,2],[0,0,-18,-11],[0,0,23,-17],[0,0,0,-58],[23,-17,48,-17],[27,2,38,-1.35]].forEach(p=>{mx.beginPath();mx.moveTo(X(p[0]),Y(p[1]));mx.lineTo(X(p[2]),Y(p[3]));mx.stroke()});
+ mx.fillStyle='#'+('000000'+R.th.hut.w[0].toString(16)).slice(-6);R.HUTS.forEach(h=>{mx.beginPath();mx.arc(X(h.x),Y(h.z),Math.max(4.5,h.s*3.6),0,6.283);mx.fill();mx.strokeStyle='rgba(40,20,8,.55)';mx.lineWidth=1.5;mx.stroke()});if(R.museumPos){mx.fillStyle='#f3bd5d';mx.fillRect(X(R.museumPos.x)-5,Y(R.museumPos.z)-5,10,10);mx.strokeStyle='#fff0cc';mx.lineWidth=1.5;mx.strokeRect(X(R.museumPos.x)-5,Y(R.museumPos.z)-5,10,10)}
  mx.fillStyle='#d3b68c';mx.fillRect(X(30)-18,Y(-26)-10,36,20);
  NPC_DATA.forEach(d=>{mx.fillStyle='#3fb8a4';mx.beginPath();mx.arc(X(d.p.x),Y(d.p.z),6,0,6.283);mx.fill();mx.strokeStyle='#fff';mx.lineWidth=2;mx.stroke()});
  R.picks.forEach(p=>{if(p.got)return;mx.fillStyle='#7fd8ff';mx.strokeStyle='#0a1c36';mx.lineWidth=1.5;mx.beginPath();mx.arc(X(p.x),Y(p.z),4.2,0,6.283);mx.fill();mx.stroke()});
@@ -1645,7 +1726,7 @@ function loop(){
   /* objets */
   if(!frozen()){const d=D();R.picks.forEach(p=>{if(p.got)return;if(Math.hypot(P.x-p.x,P.z-p.z)<1.7){p.got=true;p.g.visible=false;d.picked[p.i]=1;d.got[p.t]=(d.got[p.t]||0)+1;
     const wi=lang().W.findIndex(w=>w.k===p.t),w=lang().W[wi];if(wi>=0)d.learned[wi]=1;save();toast((w?w.wo+' : '+w.fr.toLowerCase():'Ingrédient trouvé : '+PKFR[p.t]+' (mot à documenter)')+' ('+gotTypes()+' sur 4 ingrédients)');if(w)say(w.wo);check()}})}
-  R.picks.forEach((p,i)=>{if(p.got)return;p.m.rotation.y=t*1.6+i;p.g.position.y=.95+Math.sin(t*2.4+i)*.12});
+  R.picks.forEach((p,i)=>{if(p.got)return;p.m.rotation.y=t*1.6+i;p.g.position.y=.95+Math.sin(t*2.4+i)*.12;p.tag.visible=!museumOpen&&Math.hypot(P.x-p.x,P.z-p.z)<24});
   /* interactions */
   let best=null,bd=1e9;NPC_DATA.concat(SPOTS,lifeActive()).forEach(n=>{const d=Math.hypot(P.x-n.p.x,P.z-n.p.z);if(d<n.r&&d<bd){bd=d;best=n}});if(!best)best=R.nearInter(P.x,P.z);
   const act=$('#act'),show=!!best&&!frozen()&&!dlg;
@@ -1710,7 +1791,7 @@ function init2D(){
  R={is2d:true,rr,th:th2,HUTS:[],picks:[],fireK:1,applyLang,syncPickups,rebuildPlayer(){},setHeroName(){},tick(){},
   nearInter(x,z){const i=rr.nearInter(x,z);if(!i)return null;return wrap[i.id]||(wrap[i.id]={inter:true,root:i,name:i.name,r:0})},
   tapRoots(){return rr.inter},findInter(o){return o},
-  triggerInter(it){if(Math.hypot(P.x-it.x,P.z-it.z)>(it.type==='field'?12:12)){toast('Rapproche-toi : '+it.name);return}
+  triggerInter(it){if(it.type==='museum'){enterMaskMuseum();return}if(Math.hypot(P.x-it.x,P.z-it.z)>(it.type==='field'?12:12)){toast('Rapproche-toi : '+it.name);return}
    const r=rr.trigger(it,P);let msg=r.msg||'';const wi=it.re?frWord(it.re):-1;
    if(wi>=0){const w=lang().W[wi];const d=D();if(!d.learned[wi]){d.learned[wi]=1;save();check()}msg=(msg?msg+' ':'')+w.wo+' : '+w.fr.toLowerCase();say(w.wo)}
    if(R.shake)R.shake(it.type==='tree'?.35:it.type==='fire'?.2:.12);toast(msg||it.name)}};
@@ -1798,6 +1879,12 @@ function ambProfile(){const L=lang();if(ambProfId!==L.id||!ambProf){ambProfId=L.
 const AMB_IC={sun:'<circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2"/>',moon:'<path d="M20 14.5A8 8 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/>',cloud:'<path d="M7 18a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 10a4 4 0 0 1-.5 8z"/>',rain:'<path d="M7 14a4.5 4.5 0 0 1-.5-9A6 6 0 0 1 18 6a4 4 0 0 1-.5 8zM8 17l-1 3M12 17l-1 3M16 17l-1 3"/>',dust:'<path d="M3 8h11a2.5 2.5 0 1 0-2.5-2.5M3 12h16a2.5 2.5 0 1 1-2.5 2.5M3 16h8a2 2 0 1 1-2 2"/>',mist:'<path d="M4 9h16M2 13h14M6 17h14M9 5h9"/>'};
 let ambT=0,ambAcc=0,ambKey='',ambDrops=[],ambDust=[],ambMist=[],ambStars=null,ambCx=null,ambSt=null,ambClimId='';
 const ambOn=()=>{const s=state.settings||{};return !!window.LCA.ambient&&s.amb!==0&&s.amb!==false};
+let realWeather=null,realWeatherStarted=false;
+function realtimeAmbient(){
+ const W=window.LCA.realtimeWeather;if(!W)return null;
+ if(!realWeatherStarted){realWeatherStarted=true;W.start(v=>{realWeather=v;ambKey='';toast('Météo réelle activée pour ta position (mise à jour toutes les 15 minutes).')})}
+ return realWeather;
+}
 function ambCanvas(){const c=$('#amb');if(!c)return null;const w=Math.max(2,Math.round(c.clientWidth/3)),h=Math.max(2,Math.round(c.clientHeight/3));if(c.width!==w||c.height!==h){c.width=w;c.height=h}if(!ambCx)ambCx=c.getContext('2d');return ambCx}
 function ambTick(dt){
  const c=$('#amb'),hud=$('#ambHud');if(!c)return;
@@ -1807,7 +1894,7 @@ function ambTick(dt){
  ambAcc+=dt;if(ambAcc<.05)return;const step=ambAcc;ambAcc=0;
  const AM=window.LCA.ambient,L=lang(),low=R&&!R.is2d&&qualityOf(state.settings||{})===0;
  const CL=window.LCA.climate,prof=ambProfile();
- const st=AM.state(ambT,prof?CL.ambientOpts(prof):{wet:1});ambSt=st;
+ const real=realtimeAmbient(),st=AM.state(ambT,real?{realtime:real}:(prof?CL.ambientOpts(prof):{wet:1}));ambSt=st;
  if(prof&&prof.id!==ambClimId){const first=!ambClimId;ambClimId=prof.id;if(!first&&!welcomeOpen)toast('Climat de '+L.name+' : '+prof.name.toLowerCase()+'. '+prof.note)}
  /* 3D : lumières et brume suivent l’heure et la météo (le 2D ne reçoit que le voile ci-dessous) */
  if(R&&!R.is2d&&R.hemi&&R.th){R.hemi.intensity=R.th.hemi[2]*st.dim;R.sun.intensity=R.th.sun[1]*st.dim*(1-.5*st.night);
@@ -1829,7 +1916,7 @@ function ambTick(dt){
   ambMist.forEach(m=>{m.x+=m.v*step*3;if(m.x>1.3)m.x=-.3;const gx=m.x*W,gy=m.y*H,gr=m.r*W,gg=g.createRadialGradient(gx,gy,0,gx,gy,gr);gg.addColorStop(0,'rgba(236,241,243,'+(.42*st.mist).toFixed(3)+')');gg.addColorStop(1,'rgba(236,241,243,0)');g.fillStyle=gg;g.fillRect(gx-gr,gy-gr,gr*2,gr*2)})}
  else if(ambMist.length)ambMist.length=0;
  const key=st.moment+'|'+st.weather+'|'+Math.floor(st.hour)+'|'+st.temp+'|'+L.id;
- if(key!==ambKey){ambKey=key;const ic=st.rain>.5?'rain':st.dust>.5?'dust':st.mist>.4?'mist':st.cloud>.35?'cloud':st.night>.5?'moon':'sun';$('#ambIc').innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+AMB_IC[ic]+'</svg>';$('#ambT').textContent=String(Math.floor(st.hour)).padStart(2,'0')+' h · '+st.moment;$('#ambW').textContent=st.weather+' · '+st.temp+' °C';if(hud&&prof)hud.title=prof.name+' — '+prof.note+' (ambiance stylisée, températures indicatives)'}
+ if(key!==ambKey){ambKey=key;const ic=st.rain>.5?'rain':st.dust>.5?'dust':st.mist>.4?'mist':st.cloud>.35?'cloud':st.night>.5?'moon':'sun';$('#ambIc').innerHTML='<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">'+AMB_IC[ic]+'</svg>';$('#ambT').textContent=String(Math.floor(st.hour)).padStart(2,'0')+' h · '+st.moment;$('#ambW').textContent=st.weather+' · '+st.temp+' °C';if(hud)hud.title=st.realtime?'Météo réelle de ta position · actualisée toutes les 15 minutes':(prof?prof.name+' — '+prof.note+' (ambiance stylisée, températures indicatives)':'')}
 }
 /* ================= VIE DU VILLAGE : routines, interactions, sons ================= */
 const lifeData=()=>R?(R.is2d?R.lifeData:R.life):null;
@@ -1871,8 +1958,10 @@ function lifeTick(dt,t){
    else{const on=h>=16.5||h<6.5;f.fl.visible=on;f.gl.visible=on;f.gl.material.opacity=Math.min(1,.35+night*.7)*(.85+.15*Math.sin(t*9+f.phase))}});
   (LI.anim||[]).forEach(a=>{if(a.t==='spin')a.o.rotation.y+=dt*2.2;else if(a.t==='ripple'){const k=1+.07*Math.sin(t*1.7);a.o.scale.set(k,1,k);a.o.material.opacity=.25+.12*Math.sin(t*2.3)}})}
 }
-function lifeDialog(n){const L=lang(),LF=window.LCA.life,LI=lifeData(),st=LI.st.find(s=>s.id===n.st),d=LF.dialog(st,n,L,{hour:lifeHour()});
- return {pages:d.pages.map(p=>({wo:p.wo,fr:p.fr})),pi:0,go:'Suivant',later:'Au revoir',on(){lifeDiscover(n,d)}}}
+function lifeDialog(n){const L=lang(),LF=window.LCA.life,LI=lifeData(),st=LI.st.find(s=>s.id===n.st),d=LF.dialog(st,n,L,{hour:lifeHour()}),pages=d.pages.map(p=>({wo:p.wo,fr:p.fr}));
+ if(n.act==='cook'&&L.recipes.length){const ready=gotTypes()>=4,unfinished=!D().flags.cooked;if(!ready)pages.push({wo:'',fr:'Avant de cuisiner, rapporte à Fatou les ingrédients de la quête : '+needList()+'. Quand tu les auras, reviens au foyer.'});else if(unfinished)pages.push({wo:'',fr:'Tu as les ingrédients ! Je te guide au foyer : ajoute chaque aliment un par un, puis suis les gestes de préparation.'});
+  return {pages,pi:0,go:!ready?'Compris':unfinished?(cookSession?'Reprendre la cuisine':'Cuisiner avec Fatou'):'Terminer',later:'Au revoir',on(){lifeDiscover(n,d);if(ready&&unfinished){if(!D().flags.delivered){flag('delivered');give('recette')}if(!cookSession)beginCookSession();openPanel('recettes');const r=L.recipes[recIdx%L.recipes.length];if(cookSession&&r&&r.ing[cookSession.item])say('Fatou te guide. Ajoute '+r.ing[cookSession.item][0]+'.','fr')}}}}
+ return {pages,pi:0,go:'Suivant',later:'Au revoir',on(){lifeDiscover(n,d)}}}
 function lifeDiscover(n,d){const dd=D();dd.life=dd.life||{};let nw=0;
  (d.learn||[]).forEach(i=>{if(!dd.learned[i]){dd.learned[i]=1;nw++}});
  const first=!dd.life[n.st];dd.life[n.st]=1;

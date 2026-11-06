@@ -4,7 +4,8 @@
   "private": true,
   "description": "Jeu 2D/3D éducatif : explorer un village, apprendre des langues africaines avec leçons, quiz, XP et badges. Contenus en brouillon, à valider.",
   "scripts": {
-    "dev": "vite --host 127.0.0.1 --port 5173 --open",
+    "dev": "node scripts/dev.mjs",
+    "dev:web": "vite --host 127.0.0.1 --port 5173 --open",
     "validate": "node scripts/validate-data.mjs",
     "lint": "node scripts/lint.mjs",
     "test": "node --test tests/*.test.cjs",

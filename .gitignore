@@ -1,3 +1,7 @@
 node_modules
 dist
 .DS_Store
+server/*.sqlite
+server/*.sqlite-shm
+server/*.sqlite-wal
+server/*.json.bak

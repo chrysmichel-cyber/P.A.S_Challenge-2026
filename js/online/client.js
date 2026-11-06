@@ -21,7 +21,7 @@
    auth:{
     register:async(name,password,consent)=>{const j=await call('POST','/v1/auth/register',{name,password,consent:!!consent},false);token=j.token;return j},
     login:async(name,password)=>{const j=await call('POST','/v1/auth/login',{name,password},false);token=j.token;return j},
-    logout:()=>{token=null},me:()=>call('GET','/v1/me'),
+    logout:()=>{token=null},me:()=>call('GET','/v1/me'),updateProfile:p=>call('PUT','/v1/me/profile',p),
     deleteAccount:async()=>{const j=await call('DELETE','/v1/me');token=null;return j},
     exportData:()=>call('GET','/v1/me/export')},
    stories:{

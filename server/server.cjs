@@ -1,17 +1,17 @@
 #!/usr/bin/env node
-/* Serveur de référence N'Zassa (SANS dépendance, Node ≥ 18). Sert de contrat exécutable pour la future API ;
-   il n'est PAS un déploiement de production : stockage fichier JSON, pas de TLS (à placer derrière un proxy HTTPS), pas de vraie modération.
+/* Serveur de référence N'Zassa (Node ≥ 18, base SQLite db.sqlite). Sert de contrat exécutable pour la future API ;
+   il n'est PAS un déploiement de production : pas de TLS (à placer derrière un proxy HTTPS), pas de vraie modération.
    Sécurité mise en œuvre : mots de passe hachés (scrypt + sel), jetons signés HMAC-SHA256 avec expiration, limitation de débit,
    limites de taille, validation stricte, consentement explicite, suppression et export des données, statut de modération (aucun récit public sans validation). */
 'use strict';
 const {createWorld,WorldError}=require('./world.cjs');
-const http=require('http'),crypto=require('crypto'),fs=require('fs'),path=require('path');
+const {createDatabase}=require('./database.cjs');
+const http=require('http'),crypto=require('crypto'),path=require('path');
 const MAX_BODY=6*1024*1024,TOKEN_TTL=7*24*3600,NAME_RE=/^[\p{L}\p{N}][\p{L}\p{N} '’_-]{1,23}$/u;
 function createServer(opts){
  opts=opts||{};const secret=opts.secret||process.env.NZASSA_SECRET||crypto.randomBytes(32).toString('hex'),file=opts.file||null,rate=opts.rate||{max:60,windowMs:60000},now=opts.now||(()=>Date.now());
- const world=createWorld({now});
- let db={users:{},stories:{},reports:[]};if(file&&fs.existsSync(file)){try{db=JSON.parse(fs.readFileSync(file,'utf8'))}catch(e){}}
- const persist=()=>{if(file)fs.writeFileSync(file,JSON.stringify(db))};
+ const world=createWorld({now}),database=createDatabase(file),db=database.load();
+ const persist=()=>database.save(db);
  const b64=b=>Buffer.from(b).toString('base64url');
  const sign=p=>{const body=b64(JSON.stringify(p));return body+'.'+crypto.createHmac('sha256',secret).update(body).digest('base64url')};
  function verify(t){if(typeof t!=='string'||t.length>2000)return null;const [body,sig]=t.split('.');if(!body||!sig)return null;
@@ -23,10 +23,10 @@ function createServer(opts){
  function limited(ip,path){const kind=path.startsWith('/v1/auth')?'auth':path==='/v1/world/sync'?'sync':path==='/v1/world/join'?'join':'api',
   max=kind==='auth'?(rate.authMax||Math.min(rate.max,10)):kind==='sync'?(rate.syncMax||900):kind==='join'?(rate.joinMax||30):rate.max,k=ip+'|'+kind,t=now();
   let h=hits.get(k);if(!h||t-h.t>rate.windowMs){h={t,n:0};hits.set(k,h)}h.n++;return h.n>max}
- const send=(res,code,obj)=>{const b=JSON.stringify(obj);res.writeHead(code,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','access-control-allow-origin':opts.cors||'null','access-control-allow-headers':'content-type, authorization','access-control-allow-methods':'GET,POST,DELETE,OPTIONS'});res.end(b)};
+ const send=(res,code,obj)=>{const b=JSON.stringify(obj);res.writeHead(code,{'content-type':'application/json; charset=utf-8','cache-control':'no-store','x-content-type-options':'nosniff','access-control-allow-origin':opts.cors||'null','access-control-allow-headers':'content-type, authorization','access-control-allow-methods':'GET,POST,PUT,DELETE,OPTIONS'});res.end(b)};
  const err=(res,code,msg,c)=>send(res,code,{error:msg,code:c||'error'});
  const clean=(s,n)=>String(s==null?'':s).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/g,'').slice(0,n);
- const pub=u=>({id:u.id,name:u.name,created:u.created});
+ const pub=u=>({id:u.id,name:u.name,characterName:u.characterName||'',created:u.created});
  function readBody(req){return new Promise((ok,ko)=>{let n=0;const ch=[];req.on('data',d=>{n+=d.length;if(n>MAX_BODY){ko(Object.assign(new Error('Corps trop volumineux'),{status:413}));req.destroy();return}ch.push(d)});req.on('end',()=>{if(!n)return ok({});try{ok(JSON.parse(Buffer.concat(ch).toString()))}catch(e){ko(Object.assign(new Error('JSON invalide'),{status:400}))}});req.on('error',ko)})}
  const server=http.createServer(async(req,res)=>{
   try{
@@ -53,6 +53,7 @@ function createServer(opts){
     if(!good)return err(res,401,'Nom ou mot de passe incorrect','bad_credentials');
     return send(res,200,{user:pub(u),token:sign({sub:u.id,exp:now()/1000+TOKEN_TTL})})}
    if(p==='/v1/me'&&req.method==='GET'){if(!need())return;return send(res,200,{user:pub(user)})}
+   if(p==='/v1/me/profile'&&req.method==='PUT'){if(!need())return;const name=clean(body.characterName,16).trim();if(name&&!/^[\p{L}\p{N}][\p{L}\p{N} '’_-]{0,15}$/u.test(name))return err(res,400,'Nom du personnage invalide','bad_profile');user.characterName=name;persist();return send(res,200,{user:pub(user)})}
    if(p==='/v1/me'&&req.method==='DELETE'){if(!need())return;delete db.users[user.id];Object.keys(db.stories).forEach(k=>{if(db.stories[k].owner===user.id)delete db.stories[k]});persist();return send(res,200,{deleted:true})}
    if(p==='/v1/me/export'&&req.method==='GET'){if(!need())return;return send(res,200,{user:pub(user),consent:user.consent,stories:Object.values(db.stories).filter(s=>s.owner===user.id)})}
    if(p==='/v1/stories'&&req.method==='GET'){
@@ -83,6 +84,6 @@ function createServer(opts){
     return err(res,501,'Aucun fournisseur de '+(p.endsWith('transcribe')?'transcription':'traduction')+' n’est configuré. Le jeu n’invente pas de résultat : saisis le texte à la main.','no_provider')}
    return err(res,404,'Route inconnue','not_found')
   }catch(e){err(res,e.status||500,e.status?e.message:'Erreur serveur')}});
- server.db=db;server.world=world;return server}
+ server.db=db;server.world=world;server.sqlite=database;server.on('close',()=>database.close());return server}
 module.exports={createServer};
-if(require.main===module){const port=+process.env.PORT||8787,s=createServer({cors:process.env.NZASSA_CORS,file:process.env.NZASSA_DB||path.join(__dirname,'data.json')});s.listen(port,process.env.HOST||'127.0.0.1',()=>console.log('N’Zassa API de référence sur http://127.0.0.1:'+port))}
+if(require.main===module){const port=+process.env.PORT||8787,s=createServer({cors:process.env.NZASSA_CORS,file:process.env.NZASSA_DB||path.join(__dirname,'db.sqlite')});s.listen(port,process.env.HOST||'127.0.0.1',()=>console.log('N’Zassa API de référence sur http://127.0.0.1:'+port))}
