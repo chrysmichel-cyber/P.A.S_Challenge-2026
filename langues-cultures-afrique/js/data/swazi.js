@@ -1,0 +1,13 @@
+/* Langue : Swati (siswati). Contenu minimal, rédigé pour ce prototype sans source ni validation linguistique (brouillon). À compléter avec des locuteurs. */
+(function(LCA){
+ const nums=LCA.helpers.nums;
+ LCA.add({id:"swazi",name:"Swati (siswati)",where:"Eswatini, Afrique du Sud",region:"australe",geo:{lon:31.5,lat:-26.5,lab:"r",zone:"Eswatini"},hello:"Sawubona",code:"SZ",
+  words:[["s", "Sawubona", "Bonjour"],
+   ["s", "Unjani?", "Comment vas-tu ?"],
+   ["s", "Ngiyaphila", "Je vais bien"],
+   ["s", "Ngiyabonga", "Merci"],
+   ["s", "Yebo", "Oui"],
+   ["s", "Cha", "Non"],
+   ["s", "Hamba kahle", "Va en paix"]],tales:[],recipes:[],trad:[],
+  history:["Swati (siswati) : Eswatini, Afrique du Sud. Langue bantoue du groupe nguni.", "Cette langue figure sur la carte des langues d’Afrique de plus de 4 millions de locuteurs natifs (2024) fournie pour ce projet. Le vocabulaire proposé est volontairement très limité et doit être relu par un locuteur."]});
+})(window.LCA);

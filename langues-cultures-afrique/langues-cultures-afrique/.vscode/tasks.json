@@ -1,0 +1,7 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Lancer le jeu (localhost)", "type": "npm", "script": "dev", "problemMatcher": [], "isBackground": true },
+    { "label": "Valider les données", "type": "npm", "script": "validate", "problemMatcher": [] }
+  ]
+}

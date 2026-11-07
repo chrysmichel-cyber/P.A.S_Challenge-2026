@@ -126,16 +126,40 @@ function tCooking(recipe,k){const s=cookSession,done=s.phase==='done',items=reci
  const step=recipe.steps[s.step],gesture=cookGesture(step);h+='<div class="tcard cook-guide"><small>Fatou te montre · étape '+(s.step+1)+' sur '+recipe.steps.length+'</small><b>'+esc(gesture[1])+'</b><p>'+esc(step)+'</p><button class="btn warm" data-act="cookDo">Faire ce geste</button><p class="cook-count">Les ingrédients ajoutés restent visibles dans la marmite.</p></div><ol class="steps">'+recipe.steps.map((x,i)=>'<li class="'+(i<s.step?'done':'')+'">'+esc(x)+'</li>').join('')+'</ol>';return h}
 const MASKS=window.LCA.maskCollection||[];
 let maskReliefInstance=null,maskFocusReturn=null;
-function tMusee(){const L=lang(),animals=Object.keys(LCA.animals.FR).map(k=>({fr:LCA.animals.FR[k],lo:LCA.animals.localName(L,k)}));let h='<h2>Musée des masques</h2><p class="sub">La même collection est accessible dans chaque village. Entre dans la maison du musée pour parcourir les masques au mur, les instruments 3D et leurs notices.</p><button class="btn warm" data-act="museumVisit">Entrer dans le musée immersif</button><p class="sub" style="margin-top:12px">'+MASKS.length+' masques · '+MUSEUM_INSTRUMENTS.length+' instruments · plusieurs peuples</p>';
- LCA.regions.forEach(r=>{const items=MASKS.map((m,i)=>({m,i})).filter(x=>x.m.region===r.id);if(!items.length)return;h+='<h3>'+esc(r.name)+' · '+items.length+' masque'+(items.length>1?'s':'')+'</h3><div class="mask-gallery">';items.forEach(({m,i})=>{h+='<button class="mask-card" data-mask="'+i+'" aria-label="Ouvrir la notice et le modèle 3D : '+esc(m.traditionalName)+'"><img src="'+esc(m.image)+'" alt="" loading="lazy"><b>'+esc(m.traditionalName)+'</b><small>'+esc(m.people)+' · '+esc(m.place)+'</small><em>Voir la notice et le modèle 3D →</em></button>'});h+='</div>'});
+function tMusee(){const L=lang(),animals=Object.keys(LCA.animals.FR).map(k=>({fr:LCA.animals.FR[k],lo:LCA.animals.localName(L,k)}));const VM=villageMuseum();let h='<h2>'+esc(VM.title)+'</h2><p class="sub">'+esc(VM.intro)+'</p><button class="btn warm" data-act="museumVisit">Entrer dans le musée immersif</button><p class="sub" style="margin-top:12px">'+VM.masks.length+' masques · '+VM.instruments.length+' instruments · photos de collections en accès libre</p>';
+ ['people','region','other'].forEach(t=>{const items=VM.masks.filter(m=>m.tier===t);if(!items.length)return;h+='<h3>'+esc(LCA.museum.TIERS[t].label)+' · '+items.length+' masque'+(items.length>1?'s':'')+'</h3><div class="mask-gallery">';items.forEach(m=>{const i=MASKS.findIndex(x=>x.id===m.id);h+='<button class="mask-card" data-mask="'+i+'" aria-label="Ouvrir la photo, la notice et le modèle 3D : '+esc(m.traditionalName)+'"><img src="'+esc(m.image)+'" alt="" loading="lazy"><b>'+esc(m.traditionalName)+'</b><small>'+esc(m.people)+' · '+esc(m.place)+'</small><em>Photo, notice et modèle 3D →</em></button>'});h+='</div>'});
  h+='<p class="note">Les noms et usages sont rapportés d’après les notices muséales. Quand un catalogue ne donne pas de nom traditionnel, cela est signalé explicitement.</p><h3>Les animaux · vocabulaire</h3><p class="sub">Compare les noms français et ceux déjà documentés dans la langue locale de '+esc(L.name)+'.</p><div class="chips">'+animals.map(a=>'<button class="chip" data-animal="'+esc(a.lo||'')+'" '+(a.lo?'':'disabled')+'><b>'+esc(a.fr)+'</b>'+(a.lo?' · '+esc(a.lo):' · à documenter')+'</button>').join('')+'</div><p class="note">Les mots absents du vocabulaire ne sont ni traduits ni devinés.</p>';return h}
-function openMaskViewer(mask,trigger){if(!mask)return;const modal=$('#maskViewer'),region=REGION_BY_ID[mask.region];maskFocusReturn=trigger||document.activeElement;$('#maskViewTitle').textContent=mask.traditionalName;$('#maskViewPhoto').src=mask.image;$('#maskViewPhoto').alt='Photo du masque '+mask.catalogName+' provenant de la collection du musée';$('#maskViewIdentity').innerHTML='<b>'+esc(mask.people)+'</b><span>'+esc(mask.place)+' · '+esc(mask.regionName)+'</span><small>Nom du catalogue : '+esc(mask.catalogName)+'</small><small>'+esc(mask.nameNote)+'</small>';$('#maskViewDesc').textContent=mask.description;$('#maskViewContext').textContent='Région de visite du jeu : '+(region?region.name:mask.regionName)+'. Les villages disponibles sont des repères régionaux, pas une carte des territoires culturels.';const source=$('#maskViewSource');source.href=mask.url;source.textContent='Lire la notice officielle · '+mask.source;$('#maskViewRights').textContent=mask.rights;const go=$('#maskViewGoRegion');go.dataset.maskId=mask.id;go.textContent='Explorer '+(region?region.name:mask.regionName)+' sur la carte';maskReliefInstance&&maskReliefInstance.dispose();maskReliefInstance=null;$('#mask3d').parentElement.classList.remove('ready');modal.hidden=false;requestAnimationFrame(()=>{maskReliefInstance=LCA.maskRelief.create($('#mask3d'),mask.image)});$('#maskViewerClose').focus()}
-function closeMaskViewer(){const modal=$('#maskViewer');if(modal.hidden)return;modal.hidden=true;if(maskReliefInstance)maskReliefInstance.dispose();maskReliefInstance=null;if(maskFocusReturn&&maskFocusReturn.focus)maskFocusReturn.focus();maskFocusReturn=null}
+let maskMode='photo',maskZoom=null,maskCur=null,maskList=[];
+function villageMuseum(){return LCA.museum.forLang(lang(),MASKS,window.LCA.museumInstruments||[],LCA.regions)}
+function setMaskMode(m){const stage=$('#maskStage');maskMode=m==='3d'?'3d':'photo';stage.classList.toggle('mode-3d',maskMode==='3d');stage.classList.toggle('mode-photo',maskMode==='photo');
+ document.querySelectorAll('[data-mmode]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mmode===maskMode)));
+ $('#maskViewHint').textContent=maskMode==='3d'?'Glisse pour tourner · molette ou pincement pour zoomer':'Molette ou pincement pour zoomer · glisse pour déplacer · double-clic pour agrandir';
+ if(maskReliefInstance){maskReliefInstance.dispose();maskReliefInstance=null}
+ if(maskMode==='3d'&&maskCur)requestAnimationFrame(()=>{if(maskMode==='3d'&&!$('#maskViewer').hidden&&!maskReliefInstance)maskReliefInstance=LCA.maskRelief.create($('#mask3d'),maskCur.image)});
+ else if(maskZoom)maskZoom.reset()}
+function renderMaskThumbs(){const box=$('#maskThumbs');box.innerHTML=maskList.map(m=>'<button type="button" role="listitem" data-mthumb="'+esc(m.id)+'" aria-pressed="'+(maskCur&&m.id===maskCur.id)+'" aria-label="'+esc(m.traditionalName)+' · '+esc(m.people)+'"><img src="'+esc(m.image)+'" alt="" loading="lazy"></button>').join('');
+ const on=box.querySelector('[aria-pressed=true]');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest',inline:'center'})}
+function showMask(mask){if(!mask)return;const region=REGION_BY_ID[mask.region];maskCur=mask;$('#maskViewTitle').textContent=mask.traditionalName;const ph=$('#maskViewPhoto');ph.src=mask.image;ph.alt='Photo du masque '+mask.catalogName+' provenant de la collection du musée';
+ $('#maskViewIdentity').innerHTML='<b>'+esc(mask.people)+'</b><span>'+esc(mask.place)+' · '+esc(mask.regionName)+'</span><small>Nom du catalogue : '+esc(mask.catalogName)+'</small><small>'+esc(mask.nameNote)+'</small>'+(mask.tierLabel?'<small class="mask-tier">'+esc(mask.tierLabel)+'</small>':'');
+ $('#maskViewDesc').textContent=mask.description;$('#maskViewContext').textContent='Région de visite du jeu : '+(region?region.name:mask.regionName)+'. Les villages disponibles sont des repères régionaux, pas une carte des territoires culturels.';
+ const source=$('#maskViewSource');source.href=mask.url;source.textContent='Lire la notice officielle · '+mask.source;$('#maskViewRights').textContent=mask.rights;
+ const go=$('#maskViewGoRegion');go.dataset.maskId=mask.id;go.textContent='Explorer '+(region?region.name:mask.regionName)+' sur la carte';
+ const i=maskList.findIndex(m=>m.id===mask.id);$('#maskCount').textContent=maskList.length>1?(i+1)+' / '+maskList.length:'';$('#maskPrev').hidden=$('#maskNext').hidden=maskList.length<2;
+ if(maskZoom)maskZoom.reset();renderMaskThumbs();setMaskMode(maskMode)}
+function openMaskViewer(mask,trigger,mode){if(!mask)return;const modal=$('#maskViewer');maskFocusReturn=trigger||document.activeElement;maskList=villageMuseum().masks;if(!maskList.some(m=>m.id===mask.id))maskList=[mask];else mask=maskList.find(m=>m.id===mask.id);
+ if(!maskZoom)maskZoom=LCA.photoZoom.attach($('#maskPhotoFrame'),$('#maskViewPhoto'));
+ maskMode=mode==='3d'?'3d':'photo';modal.hidden=false;showMask(mask);$('#maskViewerClose').focus()}
+function stepMask(dir){if(!maskCur)return;const n=LCA.museum.neighbour(maskList,maskCur.id,dir);if(n)showMask(n)}
+function closeMaskViewer(){const modal=$('#maskViewer');if(modal.hidden)return;modal.hidden=true;if(maskReliefInstance)maskReliefInstance.dispose();maskReliefInstance=null;if(maskZoom)maskZoom.reset();if(maskFocusReturn&&maskFocusReturn.focus)maskFocusReturn.focus();maskFocusReturn=null}
 function exploreMaskRegion(maskId){const mask=MASKS.find(m=>m.id===(maskId||$('#maskViewGoRegion').dataset.maskId));if(!mask)return;const region=REGION_BY_ID[mask.region];closeMaskViewer();if(museumOpen)closeMuseumRoom();if(!region)return;if(!region.langs.includes(mapSel))mapSel=region.langs.find(id=>LANGS[id])||state.lang;openMap(region.id)}
-let museumGallery=null;
-const MUSEUM_INSTRUMENTS=window.LCA.museumInstruments||[],MUSEUM_EXHIBITS=MASKS.concat(MUSEUM_INSTRUMENTS);
-function showMuseumExhibit(item){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];$('#museumExhibitName').textContent=item.traditionalName;$('#museumExhibitIdentity').textContent=instrument?item.people+' · '+item.place:item.people+' · '+item.place+' · '+item.catalogName+' · '+item.nameNote;$('#museumExhibitDescription').textContent=item.description;const source=$('#museumExhibitSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#museumExhibitRights').textContent=item.rights;const inspect=$('#museumInspectMask');inspect.hidden=instrument;if(!instrument)inspect.dataset.maskId=item.id;const go=$('#museumExploreRegion');go.hidden=instrument;if(!instrument){go.dataset.maskId=item.id;go.textContent='Explorer '+(region?region.name:item.regionName)+' sur la carte'}$('#museumExhibits').innerHTML=MUSEUM_EXHIBITS.map(m=>'<button type="button" data-exhibit="'+esc(m.id)+'" aria-pressed="'+(m.id===item.id)+'">'+esc(m.traditionalName)+(m.kind==='instrument'?' · instrument':' · masque')+'</button>').join('')}
-function enterMaskMuseum(){if(museumOpen)return;closeMaskViewer();closeDialog();if(mapOpen)closeMap();if(tab)closePanel();setPause(false);museumOpen=true;$('#museumRoom').hidden=false;museumGallery&&museumGallery.dispose();museumGallery=LCA.maskRelief.createGallery($('#museumGallery3d'),MUSEUM_EXHIBITS,showMuseumExhibit);$('#museumRoomExit').focus()}
+let museumGallery=null,museumNow=null;
+const MUSEUM_INSTRUMENTS=window.LCA.museumInstruments||[];
+function showMuseumExhibit(item){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];$('#museumExhibitName').textContent=item.traditionalName;$('#museumExhibitIdentity').textContent=instrument?item.people+' · '+item.place:item.people+' · '+item.place+' · '+item.catalogName+' · '+item.nameNote;$('#museumExhibitDescription').textContent=item.description;const source=$('#museumExhibitSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#museumExhibitRights').textContent=item.rights;
+ const inspect=$('#museumInspectMask'),photo=$('#museumPhotoMask');inspect.hidden=photo.hidden=instrument;if(!instrument){inspect.dataset.maskId=photo.dataset.maskId=item.id}
+ const go=$('#museumExploreRegion');go.hidden=instrument;if(!instrument){go.dataset.maskId=item.id;go.textContent='Explorer '+(region?region.name:item.regionName)+' sur la carte'}
+ const list=museumNow?museumNow.exhibits:[];$('#museumExhibits').innerHTML=list.map(m=>'<button type="button" data-exhibit="'+esc(m.id)+'" aria-pressed="'+(m.id===item.id)+'">'+esc(m.traditionalName)+(m.kind==='instrument'?' · instrument':' · masque')+'</button>').join('')}
+function enterMaskMuseum(){if(museumOpen)return;closeMaskViewer();closeDialog();if(mapOpen)closeMap();if(tab)closePanel();setPause(false);museumOpen=true;museumNow=villageMuseum();$('#museumRoomTitle').textContent=museumNow.title;$('#museumIntro').textContent=museumNow.intro;$('#museumRoom').hidden=false;museumGallery&&museumGallery.dispose();museumGallery=LCA.maskRelief.createGallery($('#museumGallery3d'),museumNow.exhibits,showMuseumExhibit);setMuseumSide(matchMedia('(max-width:760px), (max-height:480px)').matches);$('#museumRoomExit').focus()}
+function setMuseumSide(collapsed){const side=document.querySelector('.museum-room-side'),b=$('#museumSideToggle');side.classList.toggle('collapsed',!!collapsed);b.setAttribute('aria-expanded',String(!collapsed));b.textContent=collapsed?'Notice ▴':'Réduire ▾'}
 function closeMuseumRoom(){if(!museumOpen)return;museumOpen=false;$('#museumRoom').hidden=true;if(museumGallery)museumGallery.dispose();museumGallery=null;P.x=38;P.z=-.5;P.y=0;P.vy=0;P.heading=0;P.yaw=0;near=null;camSnapReq=true;$('#act').hidden=true}
 let PAT='B.S.BSS.';
 function tTraditions(){
@@ -207,7 +231,7 @@ pbody.addEventListener('click',e=>{
  if((b=t.closest('[data-sv]'))){servings=Math.max(2,Math.min(12,servings+(+b.dataset.sv)));renderPanel();return}
  if((b=t.closest('[data-tale]'))){taleIdx=+b.dataset.tale;stopAudio();renderPanel();pbody.scrollTop=0;return}
  if((b=t.closest('[data-rec]'))){recIdx=+b.dataset.rec;cookSession=null;renderPanel();pbody.scrollTop=0;return}
- if((b=t.closest('[data-mask]'))){openMaskViewer(MASKS[+b.dataset.mask],b);return}
+ if((b=t.closest('[data-mask]'))){openMaskViewer(MASKS[+b.dataset.mask],b,'photo');return}
  if((b=t.closest('[data-animal]'))){if(b.dataset.animal)say(b.dataset.animal);return}
  if((b=t.closest('[data-mode]'))){learnMode=b.dataset.mode;if(learnMode==='quiz')newQuiz();renderPanel();pbody.scrollTop=0;if(learnMode==='quiz')quizSay();return}
  if((b=t.closest('[data-say]'))){say(lang().W[+b.dataset.say].wo);return}
@@ -401,10 +425,16 @@ $('#mapClose').onclick=closeMap;
 $('#maskViewerClose').onclick=closeMaskViewer;
 $('#maskViewGoRegion').onclick=exploreMaskRegion;
 $('#maskViewReset').onclick=()=>{if(maskReliefInstance)maskReliefInstance.reset()};
+$('#maskZoomIn').onclick=()=>maskZoom&&maskZoom.zoomIn();$('#maskZoomOut').onclick=()=>maskZoom&&maskZoom.zoomOut();$('#maskZoomReset').onclick=()=>maskZoom&&maskZoom.reset();
+$('#maskPrev').onclick=()=>stepMask(-1);$('#maskNext').onclick=()=>stepMask(1);
+document.querySelectorAll('[data-mmode]').forEach(b=>b.onclick=()=>setMaskMode(b.dataset.mmode));
+$('#maskThumbs').addEventListener('click',e=>{const b=e.target.closest('[data-mthumb]');if(!b)return;const m=maskList.find(x=>x.id===b.dataset.mthumb);if(m)showMask(m)});
 $('#maskViewer').addEventListener('click',e=>{if(e.target===$('#maskViewer'))closeMaskViewer()});
-$('#maskViewer').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMaskViewer()}});
+$('#maskViewer').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMaskViewer()}else if(e.key==='ArrowLeft'&&maskMode==='photo'&&(!maskZoom||maskZoom.state.scale<=1)){e.preventDefault();stepMask(-1)}else if(e.key==='ArrowRight'&&maskMode==='photo'&&(!maskZoom||maskZoom.state.scale<=1)){e.preventDefault();stepMask(1)}});
 $('#museumRoomExit').onclick=closeMuseumRoom;
-$('#museumInspectMask').onclick=()=>{const mask=MASKS.find(m=>m.id===$('#museumInspectMask').dataset.maskId);if(mask)openMaskViewer(mask,$('#museumInspectMask'))};
+$('#museumSideToggle').onclick=()=>setMuseumSide(!document.querySelector('.museum-room-side').classList.contains('collapsed'));
+$('#museumInspectMask').onclick=()=>{const mask=MASKS.find(m=>m.id===$('#museumInspectMask').dataset.maskId);if(mask)openMaskViewer(mask,$('#museumInspectMask'),'3d')};
+$('#museumPhotoMask').onclick=()=>{const mask=MASKS.find(m=>m.id===$('#museumPhotoMask').dataset.maskId);if(mask)openMaskViewer(mask,$('#museumPhotoMask'),'photo')};
 $('#museumExploreRegion').onclick=()=>exploreMaskRegion($('#museumExploreRegion').dataset.maskId);
 $('#museumExhibits').addEventListener('click',e=>{const b=e.target.closest('[data-exhibit]');if(b&&museumGallery)museumGallery.selectById(b.dataset.exhibit)});
 /* recherche d'une langue par son nom : sélectionne la pastille et zoome sur sa région */
@@ -1095,24 +1125,45 @@ function init3D(){
  hut(-24,-17,1.5,.3,'Maison des contes',1);
  const mur=new THREE.Mesh(new THREE.PlaneGeometry(3.4,.9),new THREE.MeshLambertMaterial({map:patTex(1)}));mur.position.set(-24+Math.sin(.3)*3.45,1.9,-17+Math.cos(.3)*3.45);mur.rotation.y=.3;scene.add(mur);
 
- /* Musée permanent : maison à cour et porte interactive, identique dans chaque village. */
- const museumBuilding=new THREE.Group(),museumWall=M(0xc69b63),museumTrim=M(0xead19a),museumWood=M(0x654126),museumDark=M(0x33251b);
- const mf=new THREE.Mesh(new THREE.CylinderGeometry(6.25,6.5,.42,16),M(0x8e6844));mf.position.y=.21;museumBuilding.add(mf);
+ /* Musée permanent : bâtisse en terre crue de style soudano-sahélien (contreforts, parapet crénelé, poutres saillantes),
+    sur un socle à degrés, avec porche à arc et masque sculpté au-dessus de la porte. Identique dans chaque village. */
+ const museumBuilding=new THREE.Group(),museumWall=M(0xc98f5b),museumWall2=M(0xb67a49),museumTrim=M(0xf0dcae),museumWood=M(0x5e3a22),museumDark=M(0x2a1d15),museumRed=M(0xb5452a),museumTeal=M(0x2f8f86),museumGold=M(0xe8b43c);
  const mb=(w,h,d,m,x,y,z)=>{const o=box(w,h,d,m);o.position.set(x,y,z);museumBuilding.add(o);return o};
- mb(10.5,.32,7.7,museumTrim,0,.48,0);
- mb(10.5,4.4,.34,museumWall,0,2.72,-3.65);mb(.34,4.4,7.3,museumWall,-5.08,2.72,0);mb(.34,4.4,7.3,museumWall,5.08,2.72,0);
- mb(3.85,4.4,.34,museumWall,-3.3,2.72,3.65);mb(3.85,4.4,.34,museumWall,3.3,2.72,3.65);mb(2.8,2.1,.34,museumWall,0,3.87,3.65);
- mb(2.16,2.24,.13,museumDark,0,1.63,3.47);mb(2.42,.18,.2,museumTrim,0,2.82,3.47);
- [-1.6,1.6].forEach(x=>{mb(.22,2.75,.26,museumWood,x,1.84,3.49);mb(.48,.22,.42,museumTrim,x,3.18,3.49);mb(.42,.2,.42,museumTrim,x,.63,3.49)});
- [-3.65,3.65].forEach(x=>{mb(1.15,1.2,.06,M(0x55706a),x,2.9,3.44);mb(1.35,.12,.08,museumTrim,x,2.9,3.4);mb(.12,1.32,.08,museumTrim,x,2.9,3.4)});
- mb(5.5,.24,.28,museumWood,0,4.93,3.6);
- const mroof=new THREE.Mesh(new THREE.ConeGeometry(7.4,2.5,4),M(0x7b4930));mroof.position.y=6.08;mroof.rotation.y=Math.PI/4;museumBuilding.add(mroof);
- for(let i=-4;i<=4;i++)mb(.1,.1,7.5,museumWood,i*1.15,4.96,0);
- const msign=label('MUSÉE DES MASQUES',6.3);msign.position.set(0,5.65,3.88);museumBuilding.add(msign);
- [-1.25,1.25].forEach(x=>{const step=box(1.65,.2,.65,museumWood);step.position.set(x*.35,.1,4.02);museumBuilding.add(step)});
+ const mcyl=(rt,rb,h,m,x,y,z,n)=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(rt,rb,h,n||12),m);o.position.set(x,y,z);museumBuilding.add(o);return o};
+ /* socle à degrés + dallage devant la porte */
+ mb(12.4,.3,9.4,M(0x8e6844),0,.15,.1);mb(11.4,.28,8.6,M(0xa87c52),0,.44,0);
+ for(let k=0;k<4;k++)mb(1.7-k*.12,.06,.9,M(k%2?0xc9b08a:0xb89d76),0,.04,5.4+k*1.5);
+ /* corps : murs pleins, bandeau clair à mi-hauteur, parapet crénelé */
+ mb(10.4,4.5,7.4,museumWall,0,2.7,0);mb(10.6,.22,7.6,museumTrim,0,1.35,0);mb(10.7,.3,7.7,museumTrim,0,4.9,0);
+ for(let i=-4;i<=4;i++){mb(.8,.5,.5,museumWall2,i*1.15,5.3,3.62);mb(.8,.5,.5,museumWall2,i*1.15,5.3,-3.62)}
+ for(let j=-2;j<=2;j++){mb(.5,.5,.8,museumWall2,-5.12,5.3,j*1.3);mb(.5,.5,.8,museumWall2,5.12,5.3,j*1.3)}
+ /* poutres saillantes (toron) sur les murs latéraux et le fond */
+ for(let r=0;r<2;r++)for(let j=-2;j<=2;j++){[-1,1].forEach(s=>mcyl(.1,.1,.7,museumWood,s*5.45,2.6+r*1.1,j*1.35,6).rotation.z=Math.PI/2)}
+ for(let i=-4;i<=4;i++)mcyl(.1,.1,.7,museumWood,i*1.2,3.2,-4.0,6).rotation.x=Math.PI/2;
+ /* contreforts effilés aux angles, coiffés d’un cône */
+ [[-5.2,3.7],[5.2,3.7],[-5.2,-3.7],[5.2,-3.7]].forEach(([x,z])=>{mcyl(.52,.8,5.3,museumWall2,x,2.9,z,10);mcyl(.12,.62,.95,museumWall2,x,6.0,z,10);mcyl(.07,.07,.4,museumWood,x,6.7,z,6)});
+ /* façade : pilastres, porche central surélevé et porte en arc */
+ [-3.2,3.2].forEach(x=>{mcyl(.36,.56,4.9,museumWall2,x,2.7,3.95,10);mcyl(.1,.44,.8,museumWall2,x,5.55,3.95,10)});
+ mb(4.4,5.7,.8,museumWall,0,3.15,3.85);mb(4.7,.3,1.0,museumTrim,0,6.1,3.9);
+ [-1.4,-.7,0,.7,1.4].forEach(x=>mb(.5,.4,.5,museumWall2,x,6.45,3.9));
+ mb(2.1,2.3,.2,museumDark,0,1.55,4.3);const arch=mcyl(1.05,1.05,.2,museumDark,0,2.7,4.3,18);arch.rotation.x=Math.PI/2;
+ mb(2.5,.2,.3,museumTrim,0,.58,4.32);[-1.28,1.28].forEach(x=>mb(.2,3.3,.3,museumTrim,x,2.2,4.33));const ar2=new THREE.Mesh(new THREE.TorusGeometry(1.2,.1,6,18,Math.PI),museumTrim);ar2.position.set(0,2.7,4.33);museumBuilding.add(ar2);
+ [-.52,.52].forEach(x=>mb(.9,2.2,.06,museumWood,x,1.55,4.42));mb(.1,2.2,.08,museumGold,0,1.55,4.46);
+ /* masque sculpté au-dessus de la porte */
+ mb(2.1,.1,.08,museumTrim,0,4.15,4.28);const mface=new THREE.Mesh(new THREE.SphereGeometry(.8,14,10),M(0x5a3a22));mface.scale.set(.72,1,.32);mface.position.set(0,5.0,4.35);museumBuilding.add(mface);
+ mb(.14,.55,.1,museumGold,0,5.02,4.52);[-.26,.26].forEach(x=>{mb(.3,.1,.1,museumTrim,x,5.25,4.5);mb(.1,.2,.1,museumDark,x,5.22,4.55)});
+ mb(.5,.12,.08,museumRed,0,4.62,4.52);[-.46,.46].forEach(x=>{const h=mb(.1,.9,.12,museumWood,x,5.82,4.34);h.rotation.z=x<0?.35:-.35});
+ /* fenêtres à volets sur la façade */
+ [-3.9,3.9].forEach(x=>{mb(1.0,1.2,.12,M(0x3c6f78),x,3.0,3.73);mb(1.2,.14,.2,museumTrim,x,2.38,3.78);mb(1.2,.14,.14,museumTrim,x,3.66,3.76);[-.62,.62].forEach(d=>mb(.2,1.3,.14,museumTeal,x+d,3.0,3.76))});
+ /* bannières de tissu et lanternes */
+ [[-2.6,0xb5452a],[2.6,0x2f8f86]].forEach(([x,c])=>{mb(.7,2.1,.05,M(c),x,3.3,4.28);mb(.7,.1,.07,museumGold,x,4.38,4.3);mb(.7,.1,.07,museumGold,x,2.5,4.3);mb(.12,.12,.12,museumGold,x,2.4,4.33)});
+ [-1.9,1.9].forEach(x=>{mcyl(.05,.05,1.3,museumWood,x,1.0,5.0,6);mb(.3,.34,.3,M(0xffd36e),x,1.8,5.0)});
+ /* pots plantés devant la façade */
+ [-4.2,4.2].forEach(x=>{mcyl(.42,.3,.62,museumRed,x,.75,4.8,10);const pl=new THREE.Mesh(new THREE.IcosahedronGeometry(.5,0),M(0x3f7a34));pl.position.set(x,1.35,4.8);museumBuilding.add(pl)});
+ const msign=label('MUSÉE DES MASQUES',6.3);msign.position.set(0,7.2,4.3);museumBuilding.add(msign);
  museumBuilding.position.set(38,0,-5);shade(museumBuilding,true);scene.add(museumBuilding);
  /* L’allée centrale de la façade reste libre; les collisions suivent les murs. */
- [[0,-8.35,4.8],[-5,-5,2.2],[5,-5,2.2],[-3.35,3.65,1.25],[3.35,3.65,1.25]].forEach(([x,z,r])=>addColl(38+x,-5+z,r));
+ LCA.museum.footprint(38,-5).forEach(c=>addColl(c.x,c.z,c.r));
  const museumDoor=new THREE.Group();museumDoor.position.set(38,0,-1.35);const museumHit=new THREE.Mesh(new THREE.PlaneGeometry(2.4,2.8),new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));museumHit.position.y=1.4;museumDoor.add(museumHit);scene.add(museumDoor);
  const museumLabel=label('Musée des masques · visite libre',7.2);museumLabel.position.set(38,7.7,-1.05);scene.add(museumLabel);
  /* Panneau de carrefour : placé en bord de l’allée, il pointe vers la branche qui mène au musée. */
@@ -1232,7 +1283,7 @@ function init3D(){
  for(let q=0;q<NF;q++){let gx=(rnd()-.5)*150,gz=-56+rnd()*100;if(minPath(gx,gz)<3)gx+=36;mt.makeTranslation(gx,.5,gz);flw.setMatrixAt(q,mt);flw.setColorAt(q,fcols[q%5])}
  flw.instanceMatrix.needsUpdate=true;if(flw.instanceColor)flw.instanceColor.needsUpdate=true;scene.add(flw);
  const rocks=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(.5),M(0x8a7a6a),60);
- for(let q=0;q<60;q++){const rx=(rnd()-.5)*140,rz=q<30?-60+rnd()*4:-50+rnd()*90;if(minPath(rx,rz)<3||Math.hypot(rx,rz)<14){mt.makeTranslation(0,-5,0)}else{mt.makeTranslation(rx,.15,rz);mt.multiply(new THREE.Matrix4().makeScale(.5+rnd()*1.6,.4+rnd()*.8,.5+rnd()*1.6))}rocks.setMatrixAt(q,mt)}
+ for(let q=0;q<60;q++){const rx=(rnd()-.5)*140,rz=q<30?-60+rnd()*4:-50+rnd()*90;if(minPath(rx,rz)<3||Math.hypot(rx,rz)<14){mt.makeTranslation(0,-5,0)}else{mt.makeTranslation(rx,.15,rz);const rsx=.5+rnd()*1.6,rsy=.4+rnd()*.8,rsz=.5+rnd()*1.6;mt.multiply(new THREE.Matrix4().makeScale(rsx,rsy,rsz));addColl(rx,rz,Math.max(.35,.42*Math.max(rsx,rsz)))}rocks.setMatrixAt(q,mt)}
  rocks.castShadow=true;rocks.frustumCulled=false;flw.frustumCulled=false;scene.add(rocks);
 
  /* panneau directionnel + guirlandes + lanternes */
@@ -1617,7 +1668,7 @@ function init3D(){
   mists.forEach((m,i)=>{m.position.x+=Math.sin(t*.1+i)*dt*.8})}
  paintGround(THEMES.ouest);
  const tapRoots=()=>{const out=[];[FL.baobab,FL.palm,FL.banana,FL.acacia,TX.est,TX.centrale].forEach(g=>{if(g.visible)g.children.forEach(c=>{if(c.userData&&c.userData.inter)out.push(c)})});INTER_ROOTS.forEach(r=>{if(isVis(r))out.push(r)});return out};
- const applyLang=()=>{const L=lang();LCA.animals.cur=L;applyTheme(L.region);NPC_DATA.forEach(d=>setLabel(labels[d.id],L.names[d.id]));ANTAGS.forEach(a=>setLabel(a.lb,LCA.animals.label(a.type,L)));picks.forEach(p=>setLabel(p.tag,LCA.animals.itemLabel(p.t,L)));drawBoard(L.board[0],L.board[1],'1   2   3   4   5');syncPickups()};
+ const applyLang=()=>{const L=lang();LCA.animals.cur=L;applyTheme(L.region);NPC_DATA.forEach(d=>setLabel(labels[d.id],L.names[d.id]));ANTAGS.forEach(a=>setLabel(a.lb,LCA.animals.label(a.type,L)));setLabel(museumLabel,'Musée des masques · '+L.name);picks.forEach(p=>setLabel(p.tag,LCA.animals.itemLabel(p.t,L)));drawBoard(L.board[0],L.board[1],'1   2   3   4   5');syncPickups()};
  const adapt=pf=>{grass.count=Math.max(1,Math.round(GN*pf.density));bushes.count=Math.max(1,Math.round(BN*pf.density));reeds.count=Math.max(1,Math.round(RN*pf.density));flw.count=Math.max(1,Math.round(NF*pf.density));rocks.count=Math.max(1,Math.round(60*pf.density));R.cull=pf.cull;scene.fog.far=pf.fogFar;if(pf.cull===Infinity)treeList.forEach(c=>{c.visible=true})};
  const treeList=Object.values(FL).flatMap(g=>g.children);
  R={syncRemote,adapt,treeList,cull:Infinity,applyTheme,tick,triggerInter,nearInter,tapRoots,findInter,beginCook(){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(!f)return;const p=f.group.position;P.x=p.x+2.1;P.z=p.z+1.2;P.y=0;P.vy=0;P.heading=Math.atan2(p.x-P.x,p.z-P.z);P.yaw=Math.atan2(P.x-p.x,P.z-p.z);f.foods.forEach(o=>{o.visible=false});f.soup.visible=false;f.spoon.visible=false;f.pourer.visible=false;f.stream.visible=false;f.plate.visible=false;f.drop=null;f.actionType='';LIFE.tools.forEach(q=>{q.active=false;q.pestle.position.y=q.base});cookBeat=0},addIngredient(index){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(!f)return;const o=f.foods[index%f.foods.length];o.visible=true;o.position.y=3.1;f.drop={food:o,age:0};f.soup.visible=true;f.actionType='add';cookBeat=2.8},cookAction(type){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(!f)return;LIFE.tools.forEach(q=>{q.active=false;q.pestle.position.y=q.base});const tool=type==='pound'?LIFE.tools.find(q=>q.kind==='mortar'):null,target=tool&&tool.group?tool.group.position:f.group.position;P.x=target.x+2.1;P.z=target.z+1.2;P.heading=Math.atan2(target.x-P.x,target.z-P.z);P.yaw=Math.atan2(P.x-target.x,P.z-target.z);if(tool)tool.active=true;f.actionType=type;f.spoon.visible=type==='stir';f.pourer.visible=type==='pour';f.plate.visible=type==='serve';f.stream.visible=false;if(type==='simmer')fireK=2.1;cookBeat=2.8},finishCook(){const f=LIFE.fires.find(x=>x.kind==='cook'&&x.group);if(f){f.plate.visible=true;f.spoon.visible=false;f.pourer.visible=false;f.stream.visible=false}},th:THEMES.ouest,fireK:1,rebuildPlayer(){scene.remove(R.player);R.player.traverse(o=>{if(o.geometry)o.geometry.dispose()});R.player=person(avOpts(),1);scene.add(R.player);addTag(R.player)},setHeroName(){addTag(R.player)},renderer,scene,camera,player,sun,hemi,sunB,ANTAGS,rings,WAND,life:LIFE,walkAnim,THREE,V,HUTS,picks,syncPickups,applyLang,beacon,bring,clouds,water,wgeo,wbase,fire,flame,flame2,fireLight,boats,birds,flies,ffs,ffb,ffp,puffs,halo,glint,cloths:R0.cloths||[],museumPos:{x:38,z:-5},ch};
@@ -1713,6 +1764,7 @@ function loop(){
    let dx=fx*fwd+rx*side,dz=fz*fwd+rz*side;const l=Math.hypot(dx,dz);dx/=l;dz/=l;P.x+=dx*sp*dt;P.z+=dz*sp*dt;mvx=dx;mvz=dz;
    let da=Math.atan2(dx,dz)-P.heading;da=Math.atan2(Math.sin(da),Math.cos(da));P.heading+=da*Math.min(1,dt*12);ph+=dt*sp*1.7}
   for(const c of COLL){if(c.g&&!c.g.visible)continue;const ox=P.x-c.x,oz=P.z-c.z,d=Math.hypot(ox,oz),mn=c.r+.45;if(d<mn&&d>.001){P.x+=ox/d*(mn-d);P.z+=oz/d*(mn-d)}}
+  NPC_DATA.forEach(n=>{const ox=P.x-n.p.x,oz=P.z-n.p.z,d=Math.hypot(ox,oz);if(d<.95&&d>.001){P.x+=ox/d*(.95-d);P.z+=oz/d*(.95-d)}});
   P.x=Math.max(-72,Math.min(72,P.x));P.z=Math.max(-61,Math.min(44,P.z));
   if(!frozen()&&keys[' ']&&P.y<=0.001){P.vy=7}P.vy-=22*dt;P.y=Math.max(0,P.y+P.vy*dt);if(P.y===0&&P.vy<0)P.vy=0;
   R.player.position.set(P.x,P.y+(Pz.bob||0),P.z);R.player.rotation.order='YXZ';R.player.rotation.y=P.heading;

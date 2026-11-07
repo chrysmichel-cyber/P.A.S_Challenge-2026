@@ -1,0 +1,31 @@
+/* Langue : Haoussa. Contenu minimal, rédigé pour ce prototype sans source ni validation linguistique (brouillon). À compléter avec des locuteurs. */
+(function(LCA){
+ const nums=LCA.helpers.nums;
+ LCA.add({id:"hausa",name:"Haoussa",where:"Nord du Nigeria, Niger",region:"ouest",geo:{lon:8,lat:12,lab:"r",zone:"Pays haoussa"},hello:"Sannu",code:"HA",
+  words:[["s", "Sannu", "Bonjour"],
+   ["s", "Ina kwana", "Bonjour (le matin)"],
+   ["s", "Na gode", "Merci"],
+   ["s", "Barka da zuwa", "Bienvenue"],
+   ["s", "Eh", "Oui"],
+   ["s", "A’a", "Non"],
+   ["s", "Sai an jima", "À plus tard"],
+   ["f", "Ruwa", "Eau", "eau"],
+   ["f", "Shinkafa", "Riz", "riz"],
+   ["f", "Kifi", "Poisson", "poisson"],
+   ["f", "Nama", "Viande", "viande"],
+   ["m", "Uwa", "Mère"],
+   ["m", "Uba", "Père"],
+   ["m", "Yaro", "Enfant"],
+   ["m", "Gida", "Maison"],
+   ["n", "Itace", "Arbre"],
+   ["n", "Rana", "Soleil, jour"],
+   ["n", "Ruwan sama", "Pluie"],
+   ["s", "Don Allah", "S’il vous plaît"],
+   ["n", "Fari", "Blanc"],
+   ["n", "Baƙi", "Noir"],
+   ["n", "Ja", "Rouge"],
+   ["n", "Kore", "Vert"],
+   ["n", "Shuɗi", "Bleu"],
+   ...nums(["ɗaya", "biyu", "uku", "huɗu", "biyar", "shida", "bakwai", "takwas", "tara", "goma"])],tales:[],recipes:[],trad:[],
+  history:["Haoussa : Nord du Nigeria, Niger. Langue afro-asiatique (branche tchadique).", "Cette langue figure sur la carte des langues d’Afrique de plus de 4 millions de locuteurs natifs (2024) fournie pour ce projet. Le vocabulaire proposé est volontairement très limité et doit être relu par un locuteur."]});
+})(window.LCA);

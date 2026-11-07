@@ -73,7 +73,40 @@ function createRenderer(canvas){
   dyn.wand=[];dyn.anim=[];dyn.perch=[];dyn.birds=[];dyn.flies=[];dyn.puffs=[];dyn.leaves=[];dyn.clouds=[];dyn.bflies=[];dyn.shakers=[];
   reseed(11);
   S.hutR=[0,1,2].map(k=>A.hutRound(th.hut,k));S.hutB=[0,1,2].map(k=>A.houseBox(th.hut,k));S.school=A.school(P);
-  S.museum=spr(14,10,(c)=>{softShadow(c,0,-.05,5.5,.9,.23);const wall=c.createLinearGradient(-5.3,-1,5.3,-1);wall.addColorStop(0,'#8d603c');wall.addColorStop(.5,'#c69a64');wall.addColorStop(1,'#805234');c.fillStyle=wall;c.fillRect(-5.25,-5.1,10.5,4.5);c.fillStyle='#e5ce9e';c.fillRect(-5.5,-1.05,11,.3);c.fillStyle='#69402a';c.beginPath();c.moveTo(-7,-4.6);c.lineTo(0,-9.1);c.lineTo(7,-4.6);c.closePath();c.fill();c.fillStyle='#9d6040';c.beginPath();c.moveTo(-5.5,-4.55);c.lineTo(0,-8);c.lineTo(5.5,-4.55);c.closePath();c.fill();c.fillStyle='#32241b';c.fillRect(-1.1,-5.1,2.2,3.2);c.strokeStyle='#ead19a';c.lineWidth=.18;c.strokeRect(-1.2,-5.18,2.4,3.35);[-1.75,1.75].forEach(x=>{c.fillStyle='#e2c38b';c.fillRect(x-.14,-5.2,.28,3.6);c.fillStyle='#66432c';c.fillRect(x-.28,-1.7,.56,.18)});c.fillStyle='#3d2a1c';c.fillRect(-2.6,-8.2,5.2,.68);c.fillStyle='#fff1d2';c.font='700 .42px system-ui';c.textAlign='center';c.textBaseline='middle';c.fillText('MUSÉE DES MASQUES',0,-7.86);[-3.6,3.6].forEach(x=>{c.fillStyle='#4a7890';c.fillRect(x-.48,-3.9,.96,1.05);c.strokeStyle='#ead19a';c.lineWidth=.11;c.strokeRect(x-.55,-3.97,1.1,1.2)})});
+  S.museum=spr(15,10,(c)=>{
+   const R=(x,y,w,h,f)=>{c.fillStyle=f;c.fillRect(x,y,w,h)},Poly=(pts,f)=>{c.fillStyle=f;c.beginPath();pts.forEach((p,i)=>i?c.lineTo(p[0],p[1]):c.moveTo(p[0],p[1]));c.closePath();c.fill()};
+   const WALL='#c98f5b',WALL2='#b67a49',TRIM='#f0dcae',WOOD='#5e3a22',DARK='#2a1d15';
+   softShadow(c,0,-.05,6.4,.95,.24);
+   /* socle à degrés */
+   R(-6.5,-.5,13,.5,'#8e6844');R(-6,-.85,12,.35,'#a87c52');
+   /* corps */
+   const g=c.createLinearGradient(-5.2,0,5.2,0);g.addColorStop(0,'#a06a3c');g.addColorStop(.5,WALL);g.addColorStop(1,'#946237');R(-5.2,-5.4,10.4,4.55,g);R(-5.3,-3.1,10.6,.22,TRIM);R(-5.4,-5.7,10.8,.3,TRIM);
+   /* poutres saillantes */
+   [-2.2,-4.0].forEach(y=>{[-1,1].forEach(s=>{R(s>0?5.2:-5.62,y,.42,.16,WOOD)})});
+   /* parapet crénelé */
+   for(let i=-4;i<=4;i++)R(i*1.15-.4,-6.2,.8,.5,WALL2);
+   /* contreforts effilés */
+   [-5.2,5.2].forEach(x=>{Poly([[x-.85,-.85],[x+.85,-.85],[x+.5,-6.3],[x-.5,-6.3]],WALL2);Poly([[x-.55,-6.3],[x+.55,-6.3],[x,-7.5]],WALL2);R(x-.04,-8,.08,.55,WOOD);R(x-.7,-3.1,1.4,.2,TRIM)});
+   [-3.2,3.2].forEach(x=>{Poly([[x-.55,-.85],[x+.55,-.85],[x+.34,-5.9],[x-.34,-5.9]],WALL2);Poly([[x-.4,-5.9],[x+.4,-5.9],[x,-6.6]],WALL2)});
+   /* porche central */
+   const pg=c.createLinearGradient(-2.2,0,2.2,0);pg.addColorStop(0,'#b87f4c');pg.addColorStop(.5,'#d49a62');pg.addColorStop(1,'#a8703f');R(-2.2,-7,4.4,6.15,pg);R(-2.4,-7.3,4.8,.4,TRIM);[-1.7,-.85,0,.85,1.7].forEach(x=>R(x-.3,-7.8,.6,.55,WALL2));
+   /* porte en arc */
+   c.fillStyle=DARK;c.beginPath();c.moveTo(-1.05,-.85);c.lineTo(-1.05,-3.1);c.arc(0,-3.1,1.05,Math.PI,0);c.lineTo(1.05,-.85);c.closePath();c.fill();
+   c.strokeStyle=TRIM;c.lineWidth=.2;c.beginPath();c.moveTo(-1.2,-.85);c.lineTo(-1.2,-3.1);c.arc(0,-3.1,1.2,Math.PI,0);c.lineTo(1.2,-.85);c.stroke();
+   R(-.04,-3.2,.08,2.35,'#e8b43c');R(-1.35,-.95,2.7,.2,'#c9b08a');
+   /* masque sculpté */
+   c.fillStyle=WOOD;c.beginPath();c.ellipse(0,-5.55,.55,.85,0,0,7);c.fill();c.strokeStyle='#e8b43c';c.lineWidth=.07;c.stroke();
+   R(-.3,-5.85,.2,.07,TRIM);R(.1,-5.85,.2,.07,TRIM);R(-.04,-5.8,.08,.7,'#e8b43c');R(-.2,-5.0,.4,.09,'#b5452a');
+   [-1,1].forEach(s=>{c.strokeStyle=WOOD;c.lineWidth=.12;c.beginPath();c.moveTo(s*.4,-6.25);c.lineTo(s*.75,-6.95);c.stroke()});
+   /* fenêtres */
+   [-3.9,3.9].forEach(x=>{R(x-.55,-3.95,1.1,1.25,'#3c6f78');c.strokeStyle=TRIM;c.lineWidth=.1;c.strokeRect(x-.6,-4,1.2,1.35);[-1,1].forEach(s=>R(x+s*.62-.1,-4,.2,1.35,'#2f8f86'))});
+   /* bannières */
+   [[-1.75,'#b5452a'],[1.75,'#2f8f86']].forEach(([x,col])=>{R(x-.3,-4.7,.6,2.1,col);R(x-.34,-4.8,.68,.1,'#e8b43c');Poly([[x-.3,-2.6],[x,-2.9],[x+.3,-2.6]],col)});
+   /* pots */
+   [-6.1,6.1].forEach(x=>{Poly([[x-.4,0],[x+.4,0],[x+.5,-.75],[x-.5,-.75]],'#b5452a');c.fillStyle='#3f7a34';c.beginPath();c.arc(x,-1.2,.62,0,7);c.fill();c.fillStyle='#62a04a';c.beginPath();c.arc(x-.15,-1.35,.35,0,7);c.fill()});
+   /* enseigne */
+   R(-3,-9,6,.85,'#3d2a1c');c.strokeStyle='#e8b43c';c.lineWidth=.08;c.strokeRect(-2.95,-8.95,5.9,.75);
+   c.fillStyle='#fff1d2';c.font='700 .46px system-ui';c.textAlign='center';c.textBaseline='middle';c.fillText('MUSÉE DES MASQUES',0,-8.56)});
   S.wayfinding=spr(5.6,4.2,(c)=>{softShadow(c,0,-.05,2.2,.8,.2);c.fillStyle='#654126';c.fillRect(-.12,-3.5,.24,3.5);c.fillStyle='#744a2b';c.fillRect(-2.5,-3.7,5,.95);c.fillStyle='#e6ca8c';c.lineWidth=.08;c.strokeRect(-2.5,-3.7,5,.95);c.fillStyle='#fff1d2';c.font='700 .43px system-ui';c.textAlign='center';c.textBaseline='middle';c.fillText('MUSÉE',-.35,-3.22);c.beginPath();c.moveTo(.85,-3.22);c.lineTo(1.75,-3.22);c.lineTo(1.48,-3.02);c.moveTo(1.75,-3.22);c.lineTo(1.48,-3.42);c.strokeStyle='#fff1d2';c.lineWidth=.1;c.stroke()});
   S.stall1=A.stall(P,'#e8892b');S.stall2=A.stall(P,'#3b8a8c');S.cloth=mkClothStall();S.gran=A.granary(P);
   S.jars=['#b5532a','#c9703a','#9a4a2a'].map(c=>A.jar(c));S.well=A.wellSpr();S.lantern=mkLantern();S.fence=mkFence();
@@ -85,7 +118,7 @@ function createRenderer(canvas){
   const freeSpot=(r,minR)=>{for(let k=0;k<90;k++){const tx=(rnd()-.5)*146,tz=-56+rnd()*96;if(Math.hypot(tx,tz)<(minR||10))continue;let bad=false;SPECIALS.forEach(s=>{if(Math.hypot(tx-s[0],tz-s[1])<8)bad=true});HUTS.forEach(h=>{if(Math.hypot(tx-h[0],tz-h[1])<7)bad=true});coll.forEach(c=>{if(Math.hypot(tx-c.x,tz-c.z)<c.r+r)bad=true});if(bad||minPath(tx,tz)<3.6)continue;return [tx,tz]}return null};
   /* habitations */
   HUTS.forEach((h,i)=>{const e=add(th.hut.box?S.hutB[i%3]:S.hutR[i%3],h[0],h[1],h[2]*1.0);huts.push({x:h[0],z:h[1],s:h[2]});addColl(h[0],h[1],2.6*h[2]);if(h[3])dyn.puffs.push({x:h[0]+.8,z:h[1]+.1,y:th.hut.box?3.4:5.2,age:i*1.3,life:8,k:1})});
-  add(S.museum,38,-5,1.12,{label:'Musée des masques',ly:10.2});huts.push({x:38,z:-5,s:1.35});[[38,-13.35,4.8],[33,-10,2.2],[43,-10,2.2],[34.65,-1.35,1.25],[41.35,-1.35,1.25]].forEach(([x,z,r])=>addColl(x,z,r));inter.push({id:'museum',type:'museum',name:'la porte du musée',x:38,z:-1.35,key:1,nr:4.2,msg:'Tu franchis la porte du musée des masques.'});
+  add(S.museum,38,-5,1.12,{label:'Musée des masques',ly:11.6});huts.push({x:38,z:-5,s:1.35});LCA.museum.footprint(38,-5).forEach(c=>addColl(c.x,c.z,c.r));inter.push({id:'museum',type:'museum',name:'la porte du musée',x:38,z:-1.35,key:1,nr:4.2,msg:'Tu franchis la porte du musée des masques.'});
   add(S.wayfinding,27.4,.55,1,{label:'Musée des masques →',ly:4.1});
   {const e=add(th.hut.box?S.hutB[1]:S.hutR[1],-24,-17,1.5,{label:'Maison des contes',ly:th.hut.box?7.4:8.2});huts.push({x:-24,z:-17,s:1.5});addColl(-24,-17,3.9);dyn.puffs.push({x:-23,z:-17.1,y:7,age:2,life:8,k:1.3})}
   add(S.school,30,-26,1,{label:'École du village',ly:7.6});[-3,0,3].forEach(o=>addColl(30+o,-26,2.8));
@@ -128,7 +161,7 @@ function createRenderer(canvas){
   for(let k=0;k<70*dens;k++){const x=(rnd()-.5)*146,z=-58.5-rnd()*3;if(Math.abs(x)<4)continue;add(S.reed,x,z,.8+rnd()*.6,{sway:.05})}
   for(let k=0;k<460*dens;k++){const x=(rnd()-.5)*170,z=-60+rnd()*112;if(minPath(x,z)<2.4||HUTS.some(h=>Math.hypot(x-h[0],z-h[1])<3.4))continue;add(S.tuft[k%4],x,z,1+rnd()*1.1,{sway:.07,grass:1})}
   for(let k=0;k<90*dens;k++){const x=(rnd()-.5)*150,z=-56+rnd()*100;if(minPath(x,z)<3||Math.hypot(x,z)<8||nearNpc(x,z,3))continue;add(S.flower[k%3],x,z,1+rnd()*.7,{sway:.04})}
-  for(let k=0;k<44*dens;k++){const x=(rnd()-.5)*140,z=k<20?-60+rnd()*4:-50+rnd()*90;if(minPath(x,z)<3||Math.hypot(x,z)<14||nearNpc(x,z,4))continue;add(S.rock[k%3],x,z,.6+rnd()*1.2)}
+  for(let k=0;k<44*dens;k++){const x=(rnd()-.5)*140,z=k<20?-60+rnd()*4:-50+rnd()*90;if(minPath(x,z)<3||Math.hypot(x,z)<14||nearNpc(x,z,4))continue;{const rs=.6+rnd()*1.2;add(S.rock[k%3],x,z,rs);addColl(x,z,Math.max(.4,.5*rs))}}
   /* objets à ramasser */
   picks=PICK_DEF.map((p,i)=>({t:p[0],i,x:p[1],z:p[2],got:false}));
   /* personnages et animaux */

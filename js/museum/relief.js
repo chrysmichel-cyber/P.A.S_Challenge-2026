@@ -17,14 +17,38 @@
     for (let y = 0; y < h; y += sampleStep) { add(y * w); add(y * w + w - 1); }
     const bgKey = Array.from(bins).sort((a, b) => b[1] - a[1])[0][0].split(',').map(v => Number(v) * 16 + 8);
     const visited = new Uint8Array(w * h), stack = [];
-    const isBackground = p => { const i = p * 4, dr = pixels[i] - bgKey[0], dg = pixels[i + 1] - bgKey[1], db = pixels[i + 2] - bgKey[2]; return dr * dr + dg * dg + db * db < 64 * 64; };
+    /* Modèle de fond : les photos de musée ont un fond en dégradé. On l'estime en interpolant les quatre bords (surface de Coons),
+       puis un pixel est du fond s'il est proche de ce que la surface prédit à sa position. */
+    const edge = (n, at) => { const out = new Float32Array(n * 3), r = 3; for (let k = 0; k < n; k++) { let sr = 0, sg = 0, sb = 0, c = 0; for (let d = -4; d <= 4; d++) { const kk = Math.max(0, Math.min(n - 1, k + d)); for (let t = 0; t < r; t++) { const i = at(kk, t) * 4; sr += pixels[i]; sg += pixels[i + 1]; sb += pixels[i + 2]; c++; } } out[k * 3] = sr / c; out[k * 3 + 1] = sg / c; out[k * 3 + 2] = sb / c; } return out; };
+    const eT = edge(w, (k, t) => t * w + k), eB = edge(w, (k, t) => (h - 1 - t) * w + k), eL = edge(h, (k, t) => k * w + t), eR = edge(h, (k, t) => k * w + (w - 1 - t));
+    const model = (p, ch) => { const x = p % w, y = (p - x) / w, u = x / (w - 1), v = y / (h - 1);
+      return (1 - v) * eT[x * 3 + ch] + v * eB[x * 3 + ch] + (1 - u) * eL[y * 3 + ch] + u * eR[y * 3 + ch]
+        - ((1 - u) * (1 - v) * eT[ch] + u * (1 - v) * eT[(w - 1) * 3 + ch] + (1 - u) * v * eB[ch] + u * v * eB[(w - 1) * 3 + ch]); };
+    const isBackground = p => { const i = p * 4, dr = pixels[i] - model(p, 0), dg = pixels[i + 1] - model(p, 1), db = pixels[i + 2] - model(p, 2); return dr * dr + dg * dg + db * db < 50 * 50; };
     const seed = p => { if (!visited[p] && isBackground(p)) { visited[p] = 1; stack.push(p); } };
     for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
     for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+    const grow = n => { if (!visited[n] && isBackground(n)) { visited[n] = 1; stack.push(n); } };
     while (stack.length) {
       const p = stack.pop(), x = p % w;
-      if (x > 0) seed(p - 1); if (x < w - 1) seed(p + 1);
-      if (p >= w) seed(p - w); if (p < w * (h - 1)) seed(p + w);
+      if (x > 0) grow(p - 1); if (x < w - 1) grow(p + 1);
+      if (p >= w) grow(p - w); if (p < w * (h - 1)) grow(p + w);
+    }
+    /* Fonds enfermés : ils ne touchent pas le bord, donc le remplissage précédent les a manqués.
+       On retire ceux qui ont la couleur du fond et une taille notable ; les petits reflets clairs restent. */
+    {
+      const holeLimit = Math.max(300, w * h * .004), seen = new Uint8Array(w * h);
+      const near = p => isBackground(p);
+      for (let p0 = 0; p0 < w * h; p0++) {
+        if (visited[p0] || seen[p0] || !near(p0)) continue;
+        const comp = [p0]; seen[p0] = 1; let k = 0;
+        while (k < comp.length) {
+          const q = comp[k++], qx = q % w;
+          const nb = [qx > 0 ? q - 1 : -1, qx < w - 1 ? q + 1 : -1, q >= w ? q - w : -1, q < w * (h - 1) ? q + w : -1];
+          for (const n of nb) if (n >= 0 && !visited[n] && !seen[n] && near(n)) { seen[n] = 1; comp.push(n); }
+        }
+        if (comp.length >= holeLimit) comp.forEach(q => { visited[q] = 1; });
+      }
     }
     /* Étiquette les îlots du premier plan pour retirer les poussières isolées du fond photo. */
     const labels = new Int32Array(w * h), sizes = [0]; let labelId = 0, largest = 0;
@@ -42,7 +66,7 @@
       }
       sizes[labelId] = count; largest = Math.max(largest, count);
     }
-    const minComponent = Math.max(32, largest * .0012);
+    const minComponent = Math.max(64, largest * .02);
     let x0 = w, y0 = h, x1 = 0, y1 = 0;
     for (let p = 0; p < w * h; p++) {
       const x = p % w, y = Math.floor(p / w), i = p * 4, id = labels[p];
@@ -176,22 +200,20 @@
     renderer.setClearColor(0x1b251f, 1);
     const scene = new THREE.Scene(); scene.background = new THREE.Color(0x1b251f); scene.fog = new THREE.Fog(0x1b251f, 25, 45);
     const camera = new THREE.PerspectiveCamera(42, 1, .1, 70);
-    const target = new THREE.Vector3(2.1, 3.15, -2.25), orbit = { theta: 0, phi: 1.38, radius: 14.1 };
+    const target = new THREE.Vector3(3.2, 3.15, -2.25), orbit = { theta: 0, phi: 1.38, radius: 14.1 };
     const room = new THREE.Group(); scene.add(room);
     const material = (color, roughness = .86, metalness = 0) => { const m = new THREE.MeshStandardMaterial({ color, roughness, metalness }); resources.push(m); return m; };
-    const addBox = (w, h, d, color, x, y, z, roughness) => { const g = new THREE.BoxGeometry(w, h, d), m = new THREE.Mesh(g, material(color, roughness)); const o = new THREE.Mesh(g, m); o.position.set(x, y, z); room.add(o); resources.push(g); return o; };
-    scene.add(new THREE.HemisphereLight(0xffe4ba, 0x201b15, 1.7));
-    const warm = new THREE.PointLight(0xffbd73, 2.4, 26); warm.position.set(0, 5, 1); scene.add(warm);
-    const fill = new THREE.DirectionalLight(0xd2e8d1, 1.25); fill.position.set(-5, 7, 5); scene.add(fill);
+    const addBox = (w, h, d, color, x, y, z, roughness) => { const g = new THREE.BoxGeometry(w, h, d), m = material(color, roughness); const o = new THREE.Mesh(g, m); o.position.set(x, y, z); room.add(o); resources.push(g); return o; };
+    scene.add(new THREE.HemisphereLight(0xffe4ba, 0x201b15, .8));
+    const warm = new THREE.PointLight(0xffbd73, 1.0, 26); warm.position.set(0, 5, 1); scene.add(warm);
+    const fill = new THREE.DirectionalLight(0xd2e8d1, .55); fill.position.set(-5, 7, 5); scene.add(fill);
     const floor = addBox(18.5, .28, 15.2, 0x8e704c, 0, -.14, -.8, .9); floor.receiveShadow = true;
     addBox(18.5, 7.2, .32, 0x765037, 0, 3.6, -7.6);
     addBox(.32, 7.2, 15.2, 0x6a4934, -9.1, 3.6, -.8); addBox(.32, 7.2, 15.2, 0x6a4934, 9.1, 3.6, -.8);
     addBox(18.5, .24, 15.2, 0x493623, 0, 7.2, -.8);
     addBox(18.2, .34, .24, 0x422e20, 0, .28, -7.35);
     const tile = new THREE.GridHelper(18, 18, 0xd3ad76, 0x5f4933); tile.position.set(0, .012, -.8); tile.material.transparent = true; tile.material.opacity = .22; room.add(tile); resources.push(tile.geometry, tile.material);
-    /* Une entrée encadrée et des poutres visibles donnent la lecture d'une salle visitable. */
-    [-2.5, 2.5].forEach(x => addBox(.28, 4.7, .3, 0x4d3422, x, 2.35, 6.25));
-    addBox(5.25, .34, .35, 0x4d3422, 0, 4.7, 6.25);
+    /* Des poutres au plafond donnent la lecture d'une salle visitable ; aucun montant ne passe devant la caméra. */
     for (let x = -8; x <= 8; x += 2) addBox(.15, .16, 14.4, 0x4d3422, x, 6.88, -.7);
     const positions = [-7, -4.2, -1.4, 1.4, 4.2, 7], podiums = new Map(), frameMaterials = new Map(), stagePositions = new Map();
     const ringGeo = new THREE.TorusGeometry(1.12, .055, 8, 48), ringMat = new THREE.MeshStandardMaterial({ color: 0xf2bd5c, emissive: 0xa45a16, emissiveIntensity: .42, roughness: .45 });
@@ -205,7 +227,8 @@
       x.fillText(mask.traditionalName, 24, 46); x.fillStyle = '#d3bea1'; x.font = '500 20px system-ui'; x.fillText(mask.people + ' · ' + mask.place, 24, 98);
       const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace || THREE.sRGBEncoding; resources.push(t); return t;
     };
-    collection.filter(item => item.kind !== 'instrument').forEach((mask, i) => {
+    /* La salle accroche six vitrines ; les masques en plus restent dans la liste et la galerie photo. */
+    collection.filter(item => item.kind !== 'instrument').slice(0, 6).forEach((mask, i) => {
       const x = positions[i] === undefined ? 0 : positions[i], id = mask.id;
       const panelGeo = new THREE.BoxGeometry(2.5, 3.3, .18), panel = new THREE.Mesh(panelGeo, material(0x392a1f)); panel.position.set(x, 3.55, -7.31); panel.userData.exhibitId = id; room.add(panel); resources.push(panelGeo); pickables.push(panel); podiums.set(id, panel);
       const frameMat = material(0x9c7141, .58, .08); frameMaterials.set(id, frameMat);

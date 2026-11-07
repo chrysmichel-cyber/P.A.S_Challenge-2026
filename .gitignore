@@ -5,3 +5,7 @@ server/*.sqlite
 server/*.sqlite-shm
 server/*.sqlite-wal
 server/*.json.bak
+
+.env
+.env.*
+!.env.example

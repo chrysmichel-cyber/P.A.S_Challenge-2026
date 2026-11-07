@@ -186,3 +186,6 @@ three.js r128 (licence MIT, inclus dans `vendor/`). Polices Bricolage Grotesque 
 ## 9. Ajouter ou compléter une langue
 
 Un fichier par langue dans `js/data/` : voir `docs/AJOUTER_UNE_LANGUE.md`. Ne rien inventer : laisser vide ce qui n’est pas documenté, renseigner `sources` et `contributors` avant tout passage en « validé ».
+
+## 7 nonies. Musée des masques par village (v0.20)
+Voir docs/MUSEE.md : collection par village, galerie photo avec zoom, modèle 3D manipulable, script add-mask.

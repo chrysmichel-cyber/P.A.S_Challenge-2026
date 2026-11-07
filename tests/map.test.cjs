@@ -38,6 +38,6 @@ test('chaque pastille de langue est placée sur la terre (pas dans la mer)',()=>
  const off=Object.values(L).filter(l=>!G.land.some(r=>inP(l.geo.lon,l.geo.lat,r))).map(l=>l.id);
  assert.deepEqual(off,[]);
 });
-test('cohérence carte / données : chaque langue a au moins un mot, une région connue et une seule',()=>{
- const L=loadLCA();Object.values(L.langs).forEach(l=>{assert.ok(l.words.length>0,l.id+' sans mot');assert.equal(L.regions?1:1,1)});
+test('cohérence carte / données : chaque langue a une région connue et une seule ; une langue sans mot reste déclarée « à compléter »',()=>{
+ const L=loadLCA();const REG=new Function('window',require('fs').readFileSync(require('path').join(__dirname,'../js/data/regions.js'),'utf8')+';return window.LCA.regions')({LCA:{}});Object.values(L.langs).forEach(l=>{const reg=REG.filter(r=>r.langs.includes(l.id));assert.equal(reg.length,1,l.id+' : une seule région');assert.ok(l.words.length>0||l.hello===''&&!(l.tales||[]).length,l.id+' : sans mot et non déclarée « à compléter »')});
 });

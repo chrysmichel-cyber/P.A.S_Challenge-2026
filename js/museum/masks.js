@@ -1,9 +1,11 @@
-/* Notices courtes fondées sur les catalogues des musées prêteurs.
+/* `langs` : identifiants des langues du jeu dont le peuple est celui du masque (liste vide si aucune langue du jeu ne correspond).
+   Notices courtes fondées sur les catalogues des musées prêteurs.
    Un nom rituel n'est jamais inventé lorsque la notice ne le donne pas. */
 window.LCA = window.LCA || {};
 window.LCA.maskCollection = [
   {
     id: 'dogon-imina-na',
+    langs: [],
     traditionalName: 'Imina Na · grande masque',
     catalogName: 'Imina Na (Great Mask)',
     nameNote: 'Nom donné par le catalogue du musée',
@@ -16,6 +18,7 @@ window.LCA.maskCollection = [
   },
   {
     id: 'fang-ngontang',
+    langs: [],
     traditionalName: 'Ngontang · casque à plusieurs visages',
     catalogName: 'Helmet Mask',
     nameNote: 'Ngontang désigne une tradition de masque Fang décrite par le musée',
@@ -28,6 +31,7 @@ window.LCA.maskCollection = [
   },
   {
     id: 'yoruba-mask',
+    langs: ['yoruba'],
     traditionalName: 'Nom traditionnel non indiqué',
     catalogName: 'Mask',
     nameNote: 'Attribution stylistique Yoruba dans la notice',
@@ -40,6 +44,7 @@ window.LCA.maskCollection = [
   },
   {
     id: 'senufo-helmet-mask',
+    langs: [],
     traditionalName: 'Nom traditionnel non indiqué',
     catalogName: 'Helmet Mask',
     nameNote: 'Attribution stylistique Senufo dans la notice',
@@ -52,6 +57,7 @@ window.LCA.maskCollection = [
   },
   {
     id: 'pende-gambanda',
+    langs: [],
     traditionalName: 'Gambanda · Kambanda',
     catalogName: 'Female Mask (Gambanda)',
     nameNote: 'Nom transcrit dans le catalogue du musée',
@@ -64,6 +70,7 @@ window.LCA.maskCollection = [
   },
   {
     id: 'kuba-bwoom',
+    langs: [],
     traditionalName: 'Bwoom',
     catalogName: 'Mask (Bwoom)',
     nameNote: 'Nom de personnage indiqué dans le catalogue',
