@@ -129,36 +129,36 @@ let maskReliefInstance=null,maskFocusReturn=null;
 function tMusee(){const L=lang(),animals=Object.keys(LCA.animals.FR).map(k=>({fr:LCA.animals.FR[k],lo:LCA.animals.localName(L,k)}));const VM=villageMuseum();let h='<h2>'+esc(VM.title)+'</h2><p class="sub">'+esc(VM.intro)+'</p><button class="btn warm" data-act="museumVisit">Entrer dans le musée immersif</button><p class="sub" style="margin-top:12px">'+VM.masks.length+' masques · '+VM.instruments.length+' instruments · photos de collections en accès libre</p>';
  ['people','region','other'].forEach(t=>{const items=VM.masks.filter(m=>m.tier===t);if(!items.length)return;h+='<h3>'+esc(LCA.museum.TIERS[t].label)+' · '+items.length+' masque'+(items.length>1?'s':'')+'</h3><div class="mask-gallery">';items.forEach(m=>{const i=MASKS.findIndex(x=>x.id===m.id);h+='<button class="mask-card" data-mask="'+i+'" aria-label="Ouvrir la photo, la notice et le modèle 3D : '+esc(m.traditionalName)+'"><img src="'+esc(m.image)+'" alt="" loading="lazy"><b>'+esc(m.traditionalName)+'</b><small>'+esc(m.people)+' · '+esc(m.place)+'</small><em>Photo, notice et modèle 3D →</em></button>'});h+='</div>'});
  h+='<p class="note">Les noms et usages sont rapportés d’après les notices muséales. Quand un catalogue ne donne pas de nom traditionnel, cela est signalé explicitement.</p><h3>Les animaux · vocabulaire</h3><p class="sub">Compare les noms français et ceux déjà documentés dans la langue locale de '+esc(L.name)+'.</p><div class="chips">'+animals.map(a=>'<button class="chip" data-animal="'+esc(a.lo||'')+'" '+(a.lo?'':'disabled')+'><b>'+esc(a.fr)+'</b>'+(a.lo?' · '+esc(a.lo):' · à documenter')+'</button>').join('')+'</div><p class="note">Les mots absents du vocabulaire ne sont ni traduits ni devinés.</p>';return h}
-let maskMode='photo',maskZoom=null,maskCur=null,maskList=[];
+let maskMode='photo',maskZoom=null,exhibitCur=null,exhibitList=[];
 function villageMuseum(){return LCA.museum.forLang(lang(),MASKS,window.LCA.museumInstruments||[],LCA.regions)}
 function setMaskMode(m){const stage=$('#maskStage');maskMode=m==='3d'?'3d':'photo';stage.classList.toggle('mode-3d',maskMode==='3d');stage.classList.toggle('mode-photo',maskMode==='photo');
  document.querySelectorAll('[data-mmode]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mmode===maskMode)));
  $('#maskViewHint').textContent=maskMode==='3d'?'Glisse pour tourner · molette ou pincement pour zoomer':'Molette ou pincement pour zoomer · glisse pour déplacer · double-clic pour agrandir';
  if(maskReliefInstance){maskReliefInstance.dispose();maskReliefInstance=null}
- if(maskMode==='3d'&&maskCur)requestAnimationFrame(()=>{if(maskMode==='3d'&&!$('#maskViewer').hidden&&!maskReliefInstance)maskReliefInstance=LCA.maskRelief.create($('#mask3d'),maskCur.image)});
+ if(maskMode==='3d'&&exhibitCur)requestAnimationFrame(()=>{if(maskMode==='3d'&&!$('#maskViewer').hidden&&!maskReliefInstance&&exhibitCur)maskReliefInstance=LCA.maskRelief.create($('#mask3d'),exhibitCur.image,{kind:exhibitCur.kind})});
  else if(maskZoom)maskZoom.reset()}
-function renderMaskThumbs(){const box=$('#maskThumbs');box.innerHTML=maskList.map(m=>'<button type="button" role="listitem" data-mthumb="'+esc(m.id)+'" aria-pressed="'+(maskCur&&m.id===maskCur.id)+'" aria-label="'+esc(m.traditionalName)+' · '+esc(m.people)+'"><img src="'+esc(m.image)+'" alt="" loading="lazy"></button>').join('');
+function renderMaskThumbs(){const box=$('#maskThumbs');box.innerHTML=exhibitList.map(m=>'<button type="button" role="listitem" data-mthumb="'+esc(m.id)+'" aria-pressed="'+(exhibitCur&&m.id===exhibitCur.id)+'" aria-label="'+esc(m.traditionalName)+' · '+esc(m.kind==='instrument'?'instrument · '+m.people:m.people)+'"><img src="'+esc(m.image)+'" alt="" loading="lazy"></button>').join('');
  const on=box.querySelector('[aria-pressed=true]');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest',inline:'center'})}
-function showMask(mask){if(!mask)return;const region=REGION_BY_ID[mask.region];maskCur=mask;$('#maskViewTitle').textContent=mask.traditionalName;const ph=$('#maskViewPhoto');ph.src=mask.image;ph.alt='Photo du masque '+mask.catalogName+' provenant de la collection du musée';
- $('#maskViewIdentity').innerHTML='<b>'+esc(mask.people)+'</b><span>'+esc(mask.place)+' · '+esc(mask.regionName)+'</span><small>Nom du catalogue : '+esc(mask.catalogName)+'</small><small>'+esc(mask.nameNote)+'</small>'+(mask.tierLabel?'<small class="mask-tier">'+esc(mask.tierLabel)+'</small>':'');
- $('#maskViewDesc').textContent=mask.description;$('#maskViewContext').textContent='Région de visite du jeu : '+(region?region.name:mask.regionName)+'. Les villages disponibles sont des repères régionaux, pas une carte des territoires culturels.';
- const source=$('#maskViewSource');source.href=mask.url;source.textContent='Lire la notice officielle · '+mask.source;$('#maskViewRights').textContent=mask.rights;
- const go=$('#maskViewGoRegion');go.dataset.maskId=mask.id;go.textContent='Explorer '+(region?region.name:mask.regionName)+' sur la carte';
- const i=maskList.findIndex(m=>m.id===mask.id);$('#maskCount').textContent=maskList.length>1?(i+1)+' / '+maskList.length:'';$('#maskPrev').hidden=$('#maskNext').hidden=maskList.length<2;
+function showMuseumItem(item){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];exhibitCur=item;$('#maskViewTitle').textContent=item.traditionalName;const ph=$('#maskViewPhoto');ph.src=item.image;ph.alt='Photo de '+(instrument?'l’instrument '+item.traditionalName:item.catalogName)+' provenant de la collection documentée';
+ $('#maskViewIdentity').innerHTML=instrument?'<b>'+esc(item.people)+'</b><span>Instrument de musique · '+esc(item.place)+'</span>':'<b>'+esc(item.people)+'</b><span>'+esc(item.place)+' · '+esc(item.regionName)+'</span><small>Nom du catalogue : '+esc(item.catalogName)+'</small><small>'+esc(item.nameNote)+'</small>'+(item.tierLabel?'<small class="mask-tier">'+esc(item.tierLabel)+'</small>':'');
+ $('#maskViewDesc').textContent=item.description;$('#maskViewContext').textContent=instrument?'Modèle 3D en relief interprété depuis la photo de référence ; consulte la notice et le crédit de l’image ci-dessous.':'Région de visite du jeu : '+(region?region.name:item.regionName)+'. Les villages disponibles sont des repères régionaux, pas une carte des territoires culturels.';
+ const source=$('#maskViewSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#maskViewRights').textContent=item.imageSource?item.rights+' · Image : '+item.imageSource+' ('+item.imageRights+')':item.rights;
+ const go=$('#maskViewGoRegion');go.hidden=instrument;if(!instrument){go.dataset.maskId=item.id;go.textContent='Explorer '+(region?region.name:item.regionName)+' sur la carte'}
+ const i=exhibitList.findIndex(m=>m.id===item.id);$('#maskCount').textContent=exhibitList.length>1?(i+1)+' / '+exhibitList.length:'';$('#maskPrev').hidden=$('#maskNext').hidden=exhibitList.length<2;
  if(maskZoom)maskZoom.reset();renderMaskThumbs();setMaskMode(maskMode)}
-function openMaskViewer(mask,trigger,mode){if(!mask)return;const modal=$('#maskViewer');maskFocusReturn=trigger||document.activeElement;maskList=villageMuseum().masks;if(!maskList.some(m=>m.id===mask.id))maskList=[mask];else mask=maskList.find(m=>m.id===mask.id);
+function openMuseumItemViewer(item,trigger,mode){if(!item)return;const modal=$('#maskViewer');maskFocusReturn=trigger||document.activeElement;const all=museumOpen&&museumNow?museumNow.exhibits:villageMuseum().exhibits;exhibitList=all.some(m=>m.id===item.id)?all:[item];item=exhibitList.find(m=>m.id===item.id)||item;
  if(!maskZoom)maskZoom=LCA.photoZoom.attach($('#maskPhotoFrame'),$('#maskViewPhoto'));
- maskMode=mode==='3d'?'3d':'photo';modal.hidden=false;showMask(mask);$('#maskViewerClose').focus()}
-function stepMask(dir){if(!maskCur)return;const n=LCA.museum.neighbour(maskList,maskCur.id,dir);if(n)showMask(n)}
+ maskMode=mode==='3d'?'3d':'photo';modal.hidden=false;showMuseumItem(item);$('#maskViewerClose').focus()}
+function stepMuseumItem(dir){if(!exhibitCur)return;const next=LCA.museum.neighbour(exhibitList,exhibitCur.id,dir);if(next){showMuseumItem(next);if(museumOpen&&museumGallery)museumGallery.selectById(next.id)}}
 function closeMaskViewer(){const modal=$('#maskViewer');if(modal.hidden)return;modal.hidden=true;if(maskReliefInstance)maskReliefInstance.dispose();maskReliefInstance=null;if(maskZoom)maskZoom.reset();if(maskFocusReturn&&maskFocusReturn.focus)maskFocusReturn.focus();maskFocusReturn=null}
 function exploreMaskRegion(maskId){const mask=MASKS.find(m=>m.id===(maskId||$('#maskViewGoRegion').dataset.maskId));if(!mask)return;const region=REGION_BY_ID[mask.region];closeMaskViewer();if(museumOpen)closeMuseumRoom();if(!region)return;if(!region.langs.includes(mapSel))mapSel=region.langs.find(id=>LANGS[id])||state.lang;openMap(region.id)}
 let museumGallery=null,museumNow=null;
 const MUSEUM_INSTRUMENTS=window.LCA.museumInstruments||[];
-function showMuseumExhibit(item){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];$('#museumExhibitName').textContent=item.traditionalName;$('#museumExhibitIdentity').textContent=instrument?item.people+' · '+item.place:item.people+' · '+item.place+' · '+item.catalogName+' · '+item.nameNote;$('#museumExhibitDescription').textContent=item.description;const source=$('#museumExhibitSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#museumExhibitRights').textContent=item.rights;
- const inspect=$('#museumInspectMask'),photo=$('#museumPhotoMask');inspect.hidden=photo.hidden=instrument;if(!instrument){inspect.dataset.maskId=photo.dataset.maskId=item.id}
+function showMuseumExhibit(item,sourceType){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];$('#museumExhibitName').textContent=item.traditionalName;$('#museumExhibitIdentity').textContent=instrument?'Instrument de musique · '+item.people+' · '+item.place:item.people+' · '+item.place+' · '+item.catalogName+' · '+item.nameNote;$('#museumExhibitDescription').textContent=item.description;const source=$('#museumExhibitSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#museumExhibitRights').textContent=item.imageSource?item.rights+' · Image : '+item.imageSource+' ('+item.imageRights+')':item.rights;
+ const inspect=$('#museumInspectMask'),photo=$('#museumPhotoMask');inspect.hidden=photo.hidden=false;inspect.dataset.exhibitId=photo.dataset.exhibitId=item.id;inspect.textContent='Manipuler ce '+(instrument?'instrument':'masque')+' en 3D';
  const go=$('#museumExploreRegion');go.hidden=instrument;if(!instrument){go.dataset.maskId=item.id;go.textContent='Explorer '+(region?region.name:item.regionName)+' sur la carte'}
- const list=museumNow?museumNow.exhibits:[];$('#museumExhibits').innerHTML=list.map(m=>'<button type="button" data-exhibit="'+esc(m.id)+'" aria-pressed="'+(m.id===item.id)+'">'+esc(m.traditionalName)+(m.kind==='instrument'?' · instrument':' · masque')+'</button>').join('')}
-function enterMaskMuseum(){if(museumOpen)return;closeMaskViewer();closeDialog();if(mapOpen)closeMap();if(tab)closePanel();setPause(false);museumOpen=true;museumNow=villageMuseum();$('#museumRoomTitle').textContent=museumNow.title;$('#museumIntro').textContent=museumNow.intro;$('#museumRoom').hidden=false;museumGallery&&museumGallery.dispose();museumGallery=LCA.maskRelief.createGallery($('#museumGallery3d'),museumNow.exhibits,showMuseumExhibit);setMuseumSide(matchMedia('(max-width:760px), (max-height:480px)').matches);$('#museumRoomExit').focus()}
+ const list=museumNow?museumNow.exhibits:[];$('#museumExhibits').innerHTML=list.map(m=>'<button type="button" data-exhibit="'+esc(m.id)+'" aria-pressed="'+(m.id===item.id)+'">'+esc(m.traditionalName)+(m.kind==='instrument'?' · instrument':' · masque')+'</button>').join('');setMuseumSide(false);if(sourceType==='canvas')openMuseumItemViewer(item,$('#museumGallery3d'),'3d')}
+function enterMaskMuseum(){if(museumOpen)return;closeMaskViewer();closeDialog();if(mapOpen)closeMap();if(tab)closePanel();setPause(false);museumOpen=true;museumNow=villageMuseum();$('#museumRoomTitle').textContent=museumNow.title;$('#museumIntro').textContent=museumNow.intro;$('#museumRoom').hidden=false;museumGallery&&museumGallery.dispose();setMuseumSide(false);museumGallery=LCA.maskRelief.createGallery($('#museumGallery3d'),museumNow.exhibits,showMuseumExhibit);$('#museumRoomExit').focus()}
 function setMuseumSide(collapsed){const side=document.querySelector('.museum-room-side'),b=$('#museumSideToggle');side.classList.toggle('collapsed',!!collapsed);b.setAttribute('aria-expanded',String(!collapsed));b.textContent=collapsed?'Notice ▴':'Réduire ▾'}
 function closeMuseumRoom(){if(!museumOpen)return;museumOpen=false;$('#museumRoom').hidden=true;if(museumGallery)museumGallery.dispose();museumGallery=null;P.x=38;P.z=-.5;P.y=0;P.vy=0;P.heading=0;P.yaw=0;near=null;camSnapReq=true;$('#act').hidden=true}
 let PAT='B.S.BSS.';
@@ -216,7 +216,7 @@ function slap(a,t){if(!noiseBuf){noiseBuf=a.createBuffer(1,Math.floor(a.sampleRa
 function drumTick(){const a=ac(),t=a.currentTime+.02,k=PAT[step%8];if(k==='B')bass(a,t);else if(k==='S')slap(a,t);$$('.dot').forEach((d,i)=>d.classList.toggle('on',i===step%8));step++;if(step>=32)stopDrum()}
 function startDrum(){PAT=lang().drum.pat;if(state.settings&&!state.settings.sound){toast('Le son est désactivé dans les paramètres');return}try{step=0;drumTick();drumTimer=setInterval(drumTick,170);flag('drum');give('rythme')}catch(e){drumTimer=null;toast('Le son n’est pas disponible ici')}const b=$('#drumBtn');if(b)b.textContent=drumTimer?'Arrêter':'Jouer le rythme'}
 function stopDrum(){if(drumTimer){clearInterval(drumTimer);drumTimer=null}$$('.dot').forEach(d=>d.classList.remove('on'));const b=$('#drumBtn');if(b)b.textContent='Jouer le rythme'}
-function speak(){try{const s=window.speechSynthesis;if(!s)throw 0;s.cancel();const L=lang(),T=L.tales[taleIdx%L.tales.length];const u=new SpeechSynthesisUtterance(T.title+'. '+T.paras.join(' ').replace(/\*/g,'')+' '+(T.moral||''));u.lang='fr-FR';u.rate=.95;u.onend=()=>{speaking=false;if(tab==='contes'){renderPanel()}};s.speak(u);speaking=true}catch(e){toast('La lecture vocale n’est pas disponible ici')}}
+function speak(){try{const s=window.speechSynthesis;if(!s)throw 0;loadVoices();s.cancel();const L=lang(),T=L.tales[taleIdx%L.tales.length],v=pickVoice('fr'),text=T.title+'. '+T.paras.join(' ').replace(/\*/g,'')+' '+(T.moral||''),u=configureVoice(new SpeechSynthesisUtterance(text),'fr',v,.98,.86);u.onend=()=>{speaking=false;if(tab==='contes'){renderPanel()}};s.speak(u);speaking=true}catch(e){toast('La lecture vocale n’est pas disponible ici')}}
 function stopAudio(){stopDrum();try{if(window.speechSynthesis)speechSynthesis.cancel()}catch(e){}speaking=false}
 
 pbody.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='heroName'){e.preventDefault();setName(e.target.value,'#nameMsg')}});
@@ -231,7 +231,7 @@ pbody.addEventListener('click',e=>{
  if((b=t.closest('[data-sv]'))){servings=Math.max(2,Math.min(12,servings+(+b.dataset.sv)));renderPanel();return}
  if((b=t.closest('[data-tale]'))){taleIdx=+b.dataset.tale;stopAudio();renderPanel();pbody.scrollTop=0;return}
  if((b=t.closest('[data-rec]'))){recIdx=+b.dataset.rec;cookSession=null;renderPanel();pbody.scrollTop=0;return}
- if((b=t.closest('[data-mask]'))){openMaskViewer(MASKS[+b.dataset.mask],b,'photo');return}
+ if((b=t.closest('[data-mask]'))){openMuseumItemViewer(MASKS[+b.dataset.mask],b,'photo');return}
  if((b=t.closest('[data-animal]'))){if(b.dataset.animal)say(b.dataset.animal);return}
  if((b=t.closest('[data-mode]'))){learnMode=b.dataset.mode;if(learnMode==='quiz')newQuiz();renderPanel();pbody.scrollTop=0;if(learnMode==='quiz')quizSay();return}
  if((b=t.closest('[data-say]'))){say(lang().W[+b.dataset.say].wo);return}
@@ -313,17 +313,21 @@ $('#persoBtn').onclick=()=>{if(tab==='perso')closePanel();else{setPause(false);o
 const SPK_SVG='<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>';
 let voiceList=[];
 function loadVoices(){try{voiceList=(window.speechSynthesis&&speechSynthesis.getVoices())||[]}catch(e){voiceList=[]}}
-loadVoices();try{if(window.speechSynthesis&&speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',loadVoices)}catch(e){}
+loadVoices();try{if(window.speechSynthesis){if(speechSynthesis.addEventListener)speechSynthesis.addEventListener('voiceschanged',loadVoices);else speechSynthesis.onvoiceschanged=loadVoices}}catch(e){}
 const VOICE_PREF={wolof:['fr'],dioula:['fr'],bambara:['fr'],lingala:['sw','fr'],kikongo:['sw','fr'],swahili:['sw','fr'],zoulou:['zu','fr'],xhosa:['xh','zu','fr'],shona:['sw','fr'],somali:['so','fr'],amharique:['am','fr'],sango:['fr'],tamazight:['fr'],copte:['fr']};
+const VOICE_LOCALE={fr:'fr-FR',sw:'sw-TZ',zu:'zu-ZA',xh:'xh-ZA',so:'so-SO',am:'am-ET',af:'af-ZA'};
+function voiceQuality(v){const n=(v.name||'').toLowerCase();return (/natural|neural|enhanced|premium/i.test(n)?100:0)+(/online|cloud/i.test(n)?25:0)+(/google|microsoft|apple|siri/i.test(n)?12:0)+(v.localService===false?4:0)}
 function pickVoice(id){
  const pref=state.settings&&state.settings.voice;
  if(pref){const v=voiceList.find(x=>x.voiceURI===pref);if(v)return v}
  const cands=VOICE_PREF[id]||['fr'];
- for(const p of cands){const fr=voiceList.filter(v=>v.lang&&v.lang.toLowerCase().startsWith(p));if(fr.length){return fr.find(v=>/natural|neural|google|online/i.test(v.name))||fr[0]}}
+ for(const p of cands){const voices=voiceList.filter(v=>v.lang&&v.lang.toLowerCase().startsWith(p));if(voices.length)return voices.slice().sort((a,b)=>voiceQuality(b)-voiceQuality(a))[0]}
  return null}
+function fallbackVoiceLocale(id){const cands=VOICE_PREF[id]||['fr'];return VOICE_LOCALE[cands[0]]||'fr-FR'}
+function configureVoice(utterance,id,voice,normalRate,slowRate){if(voice){utterance.voice=voice;utterance.lang=voice.lang}else utterance.lang=fallbackVoiceLocale(id);utterance.rate=state.settings&&state.settings.slow?slowRate:normalRate;utterance.pitch=1;utterance.volume=1;return utterance}
 /* Respelling : rapproche l’écriture de la prononciation attendue par la voix choisie. Approximation, non validée. */
 function respell(t,id,vl){
- let s=t.toLowerCase().replace(/[?!«»]/g,' ').replace(/\s+/g,' ').trim();
+ let s=String(t||'').normalize('NFC').toLowerCase().replace(/[«»]/g,'').replace(/\s+/g,' ').trim();
  const sw=vl&&/^(sw|zu|xh|so|am|af)/.test(vl);
  s=s.replace(/ɛ/g,sw?'e':'è').replace(/ɔ/g,'o').replace(/ɲ|ñ/g,sw?'ny':'gn').replace(/ŋ/g,'ng');
  if(sw)return s;
@@ -340,10 +344,8 @@ function say(text,id){
  try{
   if(!window.speechSynthesis)throw 0;
   loadVoices();speechSynthesis.cancel();
-  const v=pickVoice(lid),vl=v?v.lang.toLowerCase():'fr-fr';
-  const u=new SpeechSynthesisUtterance(respell(text,lid,vl));
-  if(v){u.voice=v;u.lang=v.lang}else u.lang='fr-FR';
-  u.rate=(state.settings&&state.settings.slow)?.6:.82;u.pitch=1;
+  const v=pickVoice(lid),vl=v?v.lang.toLowerCase():fallbackVoiceLocale(lid).toLowerCase(),french=/^fr(?:-|$)/i.test(lid);
+  const spoken=french?String(text||''):respell(text,lid,vl),u=configureVoice(new SpeechSynthesisUtterance(spoken),lid,v,french ? .97 : .92,french ? .84 : .78);
   speechSynthesis.speak(u)}
  catch(e){toast('La voix n’est pas disponible dans ce navigateur')}}
 
@@ -426,15 +428,15 @@ $('#maskViewerClose').onclick=closeMaskViewer;
 $('#maskViewGoRegion').onclick=exploreMaskRegion;
 $('#maskViewReset').onclick=()=>{if(maskReliefInstance)maskReliefInstance.reset()};
 $('#maskZoomIn').onclick=()=>maskZoom&&maskZoom.zoomIn();$('#maskZoomOut').onclick=()=>maskZoom&&maskZoom.zoomOut();$('#maskZoomReset').onclick=()=>maskZoom&&maskZoom.reset();
-$('#maskPrev').onclick=()=>stepMask(-1);$('#maskNext').onclick=()=>stepMask(1);
+$('#maskPrev').onclick=()=>stepMuseumItem(-1);$('#maskNext').onclick=()=>stepMuseumItem(1);
 document.querySelectorAll('[data-mmode]').forEach(b=>b.onclick=()=>setMaskMode(b.dataset.mmode));
-$('#maskThumbs').addEventListener('click',e=>{const b=e.target.closest('[data-mthumb]');if(!b)return;const m=maskList.find(x=>x.id===b.dataset.mthumb);if(m)showMask(m)});
+$('#maskThumbs').addEventListener('click',e=>{const b=e.target.closest('[data-mthumb]');if(!b)return;const item=exhibitList.find(x=>x.id===b.dataset.mthumb);if(item){showMuseumItem(item);if(museumOpen&&museumGallery)museumGallery.selectById(item.id)}});
 $('#maskViewer').addEventListener('click',e=>{if(e.target===$('#maskViewer'))closeMaskViewer()});
-$('#maskViewer').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMaskViewer()}else if(e.key==='ArrowLeft'&&maskMode==='photo'&&(!maskZoom||maskZoom.state.scale<=1)){e.preventDefault();stepMask(-1)}else if(e.key==='ArrowRight'&&maskMode==='photo'&&(!maskZoom||maskZoom.state.scale<=1)){e.preventDefault();stepMask(1)}});
+$('#maskViewer').addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeMaskViewer()}else if(e.key==='ArrowLeft'&&maskMode==='photo'&&(!maskZoom||maskZoom.state.scale<=1)){e.preventDefault();stepMuseumItem(-1)}else if(e.key==='ArrowRight'&&maskMode==='photo'&&(!maskZoom||maskZoom.state.scale<=1)){e.preventDefault();stepMuseumItem(1)}});
 $('#museumRoomExit').onclick=closeMuseumRoom;
 $('#museumSideToggle').onclick=()=>setMuseumSide(!document.querySelector('.museum-room-side').classList.contains('collapsed'));
-$('#museumInspectMask').onclick=()=>{const mask=MASKS.find(m=>m.id===$('#museumInspectMask').dataset.maskId);if(mask)openMaskViewer(mask,$('#museumInspectMask'),'3d')};
-$('#museumPhotoMask').onclick=()=>{const mask=MASKS.find(m=>m.id===$('#museumPhotoMask').dataset.maskId);if(mask)openMaskViewer(mask,$('#museumPhotoMask'),'photo')};
+$('#museumInspectMask').onclick=()=>{const item=(museumNow&&museumNow.exhibits||[]).find(m=>m.id===$('#museumInspectMask').dataset.exhibitId);if(item)openMuseumItemViewer(item,$('#museumInspectMask'),'3d')};
+$('#museumPhotoMask').onclick=()=>{const item=(museumNow&&museumNow.exhibits||[]).find(m=>m.id===$('#museumPhotoMask').dataset.exhibitId);if(item)openMuseumItemViewer(item,$('#museumPhotoMask'),'photo')};
 $('#museumExploreRegion').onclick=()=>exploreMaskRegion($('#museumExploreRegion').dataset.maskId);
 $('#museumExhibits').addEventListener('click',e=>{const b=e.target.closest('[data-exhibit]');if(b&&museumGallery)museumGallery.selectById(b.dataset.exhibit)});
 /* recherche d'une langue par son nom : sélectionne la pastille et zoome sur sa région */
@@ -608,8 +610,8 @@ function enterGame(id,panelTab){
  else{const q=curQuest();toast((heroName()?'Bienvenue, '+heroName()+' ! ':'')+(q?'Quête en cours : '+q.t:'')) }}
 const back=(to,label)=>'<button class="back" data-m="'+to+'">← '+(label||'Retour')+'</button>';
 function langCard(L,extra){return '<button class="lcard" data-pick="'+L.id+'"><span class="sw" style="background:'+L.color+'">'+L.code+'</span><span style="min-width:0"><b>'+L.name+'</b><small>'+L.where+'</small>'+stBadge(L)+(extra||'')+'</span></button>'}
-function voiceBox(){loadVoices();const cur=(state.settings&&state.settings.voice)||'';const opts='<option value="">Automatique (français, ou swahili pour les langues bantoues proches)</option>'+voiceList.map(v=>'<option value="'+esc(v.voiceURI)+'"'+(v.voiceURI===cur?' selected':'')+'>'+esc(v.name)+' ('+esc(v.lang)+')</option>').join('');
- return '<div class="trow" style="display:block"><b>Voix</b><small>Aucune voix native pour la plupart de ces langues dans le navigateur : on utilise une voix existante avec une écriture phonétique approchée. La prononciation reste approximative et non validée.</small><select id="voiceSel" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;background:var(--ink2);color:var(--fg);border:1px solid var(--line);padding:0 10px">'+opts+'</select><div class="row" style="margin-top:8px"><button class="btn ghost sm" data-m="testvoice">Tester : '+esc(lang().hello)+'</button></div>'+(voiceList.length?'':'<small style="display:block;margin-top:6px;color:var(--bad)">Aucune voix détectée sur ce navigateur.</small>')+'</div>'}
+function voiceBox(){loadVoices();const cur=(state.settings&&state.settings.voice)||'';const opts='<option value="">Automatique · meilleure voix disponible par langue</option>'+voiceList.map(v=>'<option value="'+esc(v.voiceURI)+'"'+(v.voiceURI===cur?' selected':'')+'>'+esc(v.name)+' ('+esc(v.lang)+')</option>').join('');
+ return '<div class="trow" style="display:block"><b>Voix</b><small>La lecture privilégie une voix naturelle installée dans ton navigateur. Pour les langues sans voix dédiée, une approximation phonétique est utilisée ; elle ne remplace pas un locuteur natif.</small><select id="voiceSel" style="width:100%;margin-top:8px;min-height:44px;border-radius:12px;background:var(--ink2);color:var(--fg);border:1px solid var(--line);padding:0 10px">'+opts+'</select><div class="row" style="margin-top:8px"><button class="btn ghost sm" data-m="testvoice">Tester : '+esc(lang().hello)+'</button></div>'+(voiceList.length?'':'<small style="display:block;margin-top:6px;color:var(--bad)">Aucune voix détectée sur ce navigateur.</small>')+'</div>'}
 /* ---- Profil local et authentification SQLite ---- */
 let accTab='login',accMsg='',accBusy=false,accConfirm=false;
 const ACC_ERR={bad:'Pseudo ou mot de passe incorrect.',bad_credentials:'Pseudo ou mot de passe incorrect.',short:'Trop court.',exists:'Ce pseudo existe déjà sur cet appareil.',name_taken:'Ce pseudo existe déjà dans la base SQLite.',bad_name:'Pseudo invalide : utilise 3 à 20 lettres, chiffres, espaces, apostrophes ou tirets.',bad_password:'Mot de passe : 8 à 200 caractères requis pour le compte SQLite.',consent_required:'Coche le consentement pour enregistrer le compte dans SQLite.',rate_limited:'Trop de tentatives. Attends un instant puis réessaie.',offline:'Le serveur SQLite ne répond pas. Vérifie que le serveur est lancé avec npm run dev.',storage:'Impossible d’écrire dans le stockage du navigateur (mode privé ou espace plein ?).',nocrypto:'Les mots de passe ne sont pas disponibles ici (navigateur sans chiffrement). Crée le profil sans mot de passe.',long:'Mot de passe trop long (64 caractères au plus).',unknown:'Profil introuvable.'};
@@ -811,7 +813,7 @@ async function oralAction(act){
   if(act==='remove'){const ok=await oralStoreGet().remove(oralCur.meta.id);oralMsg=ok?'Récit supprimé.':ORAL_ERR.storage;await oralShow('oral');return}
   if(act==='speak'){
    const t=($('#oTl')||{}).value||oralCur.meta.translation;if(!t.trim()){oralSay('Écris d’abord la traduction.');return}
-   try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(t.slice(0,2000));u.lang='fr-FR';u.rate=state.settings&&state.settings.slow?.75:.95;speechSynthesis.speak(u);oralSay('Lecture de la traduction par une voix de synthèse française (ce n’est pas la voix du conteur).')}catch(e){oralSay('La synthèse vocale n’est pas disponible ici.')}
+   try{loadVoices();speechSynthesis.cancel();const u=configureVoice(new SpeechSynthesisUtterance(t.slice(0,2000)),'fr',pickVoice('fr'),.98,.86);speechSynthesis.speak(u);oralSay('Lecture de la traduction par une voix de synthèse française (ce n’est pas la voix du conteur).')}catch(e){oralSay('La synthèse vocale n’est pas disponible ici.')}
    return}
   if(act==='dlaudio'){if(!oralCur.blob){oralSay('Audio introuvable.');return}const ext=({'audio/webm':'webm','audio/ogg':'ogg','audio/mp4':'m4a','audio/mpeg':'mp3','audio/wav':'wav','audio/x-wav':'wav','audio/aac':'aac'})[String(oralCur.type).split(';')[0]]||'audio';oralDownload(oralCur.blob,slugT(oralCur.meta.title)+'.'+ext);return}
   if(act==='dlbundle'){if(!oralCur.blob){oralSay('Audio introuvable.');return}const b64=await b64OfBlob(oralCur.blob),bun=LCA.oral.toBundle(oralCur.meta,b64,oralCur.type);oralDownload(new Blob([JSON.stringify(bun)],{type:'application/json'}),slugT(oralCur.meta.title)+'.nzassa-oral.json');oralSay(oralCur.meta.narratorOk?'Paquet créé (audio original, fiche et métadonnées).':'Paquet créé : le récit reste anonyme.');return}

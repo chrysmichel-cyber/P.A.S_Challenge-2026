@@ -868,3 +868,63 @@ button:not(:disabled):active,.btn:active,.mbtn:active,.tile:active{transform:sca
   .idrow{display:none}
   .acts{grid-template-columns:repeat(4,1fr)!important;gap:6px}.acts>div{padding:6px 4px!important}.acts b{font-size:18px!important}
 }
+
+/* ===== v0.20 : musée de village, galerie photo observable ===== */
+.mask-view-col{display:flex;flex-direction:column;gap:8px;min-width:0}
+.mask-modes{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.mask-modes button{min-height:40px;padding:0 16px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.04);font-weight:700;font-size:13px}
+.mask-modes button[aria-selected=true]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.mask-count{margin-left:auto;color:var(--muted);font-size:12.5px}
+.mask-photo-frame{position:absolute;inset:0;overflow:hidden;touch-action:none;cursor:zoom-in;display:none;outline-offset:-3px}
+.mask-photo-frame.zoomed{cursor:grab}
+.mask-view-stage.mode-photo .mask-photo-frame{display:block}
+.mask-view-stage .mask-photo-frame img{position:static;width:100%;height:100%;object-fit:contain;padding:12px;opacity:1;transform-origin:50% 50%;user-select:none;-webkit-user-drag:none;transition:none;will-change:transform}
+.mask-view-stage.ready .mask-photo-frame img{opacity:1}
+.mask-view-stage.mode-photo canvas,.mask-view-stage.mode-photo #maskViewReset{display:none}
+.mask-view-stage.mode-3d .mask-zoombar{display:none}
+.mask-zoombar{position:absolute;right:10px;bottom:10px;display:flex;gap:6px;z-index:2}
+.mask-zoombar button{min-width:44px;min-height:44px;border:1px solid var(--line);border-radius:12px;background:rgba(9,12,15,.78);font-weight:800;font-size:17px}
+.mask-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:2;width:44px;height:64px;border:1px solid var(--line);border-radius:14px;background:rgba(9,12,15,.62);font-size:28px;line-height:1}
+.mask-nav.prev{left:8px}.mask-nav.next{right:8px}
+.mask-nav[hidden]{display:none}
+.mask-thumbs{display:flex;gap:8px;overflow-x:auto;padding:2px 2px 6px;scrollbar-width:thin}
+.mask-thumbs button{flex:none;width:64px;height:64px;padding:3px;border:2px solid var(--line);border-radius:12px;background:rgba(0,0,0,.18)}
+.mask-thumbs button[aria-pressed=true]{border-color:var(--accent)}
+.mask-thumbs img{width:100%;height:100%;object-fit:contain;border-radius:8px;display:block}
+.mask-tier{color:var(--accent)!important;font-weight:700}
+.museum-intro{margin:6px 0 4px;font-size:12.5px;line-height:1.4;color:var(--muted)}
+.museum-exhibit-list{flex-wrap:wrap;overflow-x:visible;max-height:148px;overflow-y:auto}
+.museum-exhibit-list button{min-height:36px;padding:0 10px}
+#museumPhotoMask{display:block}
+.mask-view-stage{min-height:300px}
+@media (max-width:760px){
+  .mask-nav{width:40px;height:54px}
+  .mask-thumbs button{width:54px;height:54px}
+  .museum-exhibit-list{max-height:96px}
+}
+@media (orientation:landscape) and (max-height:480px){
+  .mask-detail{padding:8px 12px;max-height:100dvh}
+  .mask-detail-head{margin-bottom:6px}
+  .mask-detail-main{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:12px}
+  .mask-view-stage{height:calc(100dvh - 190px);min-height:150px;max-height:none}
+  .mask-view-copy{max-height:calc(100dvh - 110px);overflow:auto}
+  .mask-thumbs button{width:44px;height:44px}
+  .museum-room-side{top:62px;bottom:8px;width:min(330px,46vw);padding:10px}
+  .museum-room-help{display:none}
+  .museum-room-side{left:auto;right:var(--gr);max-height:none}
+}
+
+.museum-side-head{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.museum-side-toggle{min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:rgba(255,255,255,.05);font-size:12px;font-weight:700}
+.museum-room-side.collapsed #museumIntro,.museum-room-side.collapsed #museumExhibits,.museum-room-side.collapsed #museumExhibitIdentity,.museum-room-side.collapsed #museumExhibitDescription,.museum-room-side.collapsed #museumExhibitSource,.museum-room-side.collapsed #museumExhibitRights,.museum-room-side.collapsed #museumExploreRegion{display:none}
+.mask-view-hint{top:10px;bottom:auto}
+@media (max-width:760px){
+  .museum-room-side.collapsed{max-height:none;top:auto}
+  .museum-room-side.collapsed h3{font-size:17px}
+  .museum-room-side.collapsed .btn{min-height:42px;margin-top:6px}
+  .museum-room-help{bottom:calc(max(8px,env(safe-area-inset-bottom)) + 190px)}
+}
+@media (orientation:landscape) and (max-height:480px){
+  .museum-room-side.collapsed{top:auto;bottom:8px;max-height:none}
+  .museum-room-side.collapsed h3{font-size:16px}
+}

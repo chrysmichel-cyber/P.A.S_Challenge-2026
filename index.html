@@ -72,39 +72,39 @@
       <header class="mask-detail-head"><div><small>Collection permanente · Nzassa</small><h2 id="maskViewTitle"></h2></div><button id="maskViewerClose" aria-label="Fermer la notice">×</button></header>
       <div class="mask-detail-main">
         <div class="mask-view-col">
-          <div class="mask-modes" role="tablist" aria-label="Façon d’observer le masque"><button type="button" role="tab" data-mmode="photo" aria-selected="true">Photo</button><button type="button" role="tab" data-mmode="3d" aria-selected="false">Modèle 3D</button><span id="maskCount" class="mask-count" aria-live="polite"></span></div>
+          <div class="mask-modes" role="tablist" aria-label="Façon d’observer la pièce"><button type="button" role="tab" data-mmode="photo" aria-selected="true">Photo</button><button type="button" role="tab" data-mmode="3d" aria-selected="false">Modèle 3D</button><span id="maskCount" class="mask-count" aria-live="polite"></span></div>
           <div class="mask-view-stage mode-photo" id="maskStage">
-            <div id="maskPhotoFrame" class="mask-photo-frame" tabindex="0" aria-label="Photo du masque. Molette ou pincement pour zoomer, glisser pour déplacer, double-clic pour agrandir."><img id="maskViewPhoto" alt="" draggable="false"></div>
-            <canvas id="mask3d" tabindex="0" aria-label="Modèle 3D manipulable du masque"></canvas>
+            <div id="maskPhotoFrame" class="mask-photo-frame" tabindex="0" aria-label="Photo de la pièce. Molette ou pincement pour zoomer, glisser pour déplacer, double-clic pour agrandir."><img id="maskViewPhoto" alt="" draggable="false"></div>
+            <canvas id="mask3d" tabindex="0" aria-label="Modèle 3D manipulable de la pièce"></canvas>
             <span class="mask-view-hint" id="maskViewHint"></span>
             <div class="mask-zoombar" id="maskZoomBar"><button id="maskZoomOut" type="button" aria-label="Zoom arrière">−</button><button id="maskZoomIn" type="button" aria-label="Zoom avant">+</button><button id="maskZoomReset" type="button" aria-label="Taille d’origine">1:1</button></div>
             <button id="maskViewReset" type="button" aria-label="Réinitialiser la vue 3D">⟳</button>
-            <button id="maskPrev" class="mask-nav prev" type="button" aria-label="Masque précédent">‹</button><button id="maskNext" class="mask-nav next" type="button" aria-label="Masque suivant">›</button>
+            <button id="maskPrev" class="mask-nav prev" type="button" aria-label="Pièce précédente">‹</button><button id="maskNext" class="mask-nav next" type="button" aria-label="Pièce suivante">›</button>
           </div>
-          <div id="maskThumbs" class="mask-thumbs" role="list" aria-label="Galerie des masques du musée"></div>
+          <div id="maskThumbs" class="mask-thumbs" role="list" aria-label="Galerie des masques et instruments du musée"></div>
         </div>
-        <article class="mask-view-copy"><div id="maskViewIdentity" class="mask-view-identity"></div><p id="maskViewDesc"></p><p id="maskViewContext" class="mask-view-context"></p><a id="maskViewSource" class="mask-source" target="_blank" rel="noopener"></a><small id="maskViewRights" class="mask-rights"></small><button id="maskViewGoRegion" class="btn warm"></button><small class="mask-model-note">Modèle 3D en relief interprété depuis une photo de face. La profondeur et le revers sont des approximations numériques, pas un scan 3D de l’objet.</small></article>
+        <article class="mask-view-copy"><div id="maskViewIdentity" class="mask-view-identity"></div><p id="maskViewDesc"></p><p id="maskViewContext" class="mask-view-context"></p><a id="maskViewSource" class="mask-source" target="_blank" rel="noopener"></a><small id="maskViewRights" class="mask-rights"></small><button id="maskViewGoRegion" class="btn warm"></button><small class="mask-model-note">Le modèle 3D manipulable est un relief interprété depuis la photo de face ; la profondeur et le revers sont des approximations, pas un scan complet de l’objet.</small></article>
       </div>
     </div>
   </section>
 
   <section id="museumRoom" class="ui" hidden role="dialog" aria-modal="true" aria-labelledby="museumRoomTitle">
-    <canvas id="museumGallery3d" tabindex="0" aria-label="Salle du musée en 3D. Glisse pour regarder autour et clique sur un masque pour sa notice."></canvas>
+    <canvas id="museumGallery3d" tabindex="0" aria-label="Salle du musée en 3D. Glisse pour regarder autour et clique sur un masque ou un instrument pour sa notice."></canvas>
     <header class="museum-room-top"><div class="museum-room-brand glass"><small>Visite immersive · masques et instruments</small><h2 id="museumRoomTitle">Musée des masques</h2></div><button id="museumRoomExit" class="glass" type="button">Sortir du musée <span aria-hidden="true">×</span></button></header>
     <aside class="museum-room-side glass" aria-live="polite">
       <div class="museum-side-head"><small class="museum-room-kicker">Collection permanente</small><button id="museumSideToggle" class="museum-side-toggle" type="button" aria-expanded="true" aria-controls="museumExhibits">Réduire ▾</button></div>
       <p id="museumIntro" class="museum-intro"></p>
       <div id="museumExhibits" class="museum-exhibit-list" aria-label="Choisir une pièce de la salle"></div>
-      <h3 id="museumExhibitName">Choisis un masque</h3>
+      <h3 id="museumExhibitName">Choisis une pièce</h3>
       <p id="museumExhibitIdentity" class="sub"></p>
       <p id="museumExhibitDescription"></p>
       <a id="museumExhibitSource" class="mask-source" target="_blank" rel="noopener"></a>
       <small id="museumExhibitRights" class="mask-rights"></small>
       <button id="museumPhotoMask" class="btn" type="button" hidden>Voir la photo et zoomer</button>
-      <button id="museumInspectMask" class="btn" type="button" hidden>Manipuler ce masque en 3D</button>
+      <button id="museumInspectMask" class="btn" type="button" hidden>Manipuler en 3D</button>
       <button id="museumExploreRegion" class="btn warm" type="button"></button>
     </aside>
-    <p class="museum-room-help glass">Glisse pour regarder autour · molette ou pincement pour zoomer · sélectionne une vitrine pour lire sa notice</p>
+    <p class="museum-room-help glass">Glisse pour regarder autour · molette ou pincement pour zoomer · sélectionne un masque ou un instrument pour lire sa notice</p>
   </section>
 
   <nav id="dock" class="ui glass" aria-label="Menu principal">
