@@ -16,3 +16,6 @@ Chaque village a sa salle : `LCA.museum.forLang` (js/museum/collection.js) class
 
 ## v0.20.1 — collisions et façade du musée
 Le musée est un volume plein (cercles de collision sans trou), les cailloux bloquent le joueur dans les deux rendus, et les personnages (PNJ) bloquent aussi en 3D. Façade redessinée (2D et 3D). Testé : balayage de l’empreinte (test unitaire) et marche contre les 4 murs, des cailloux et en 2D/3D (Playwright, scripts hors dépôt). Non testé : collision contre les PNJ en 3D en jeu.
+
+## v0.20.2 — mobile en paysage
+Dialogues, carte (dessin à gauche, fiche à droite), discussion, panneaux, école, gardien, atelier et pause réduits sur écran paysage de moins de 480 px de haut. Vérifié en capture à 844×390 (2D). Non revérifié : autres tailles (667×375, 932×430), 3D en détail, tests e2e.

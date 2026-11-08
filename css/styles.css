@@ -166,12 +166,6 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:8px}
 .mask-view-identity b{font:800 21px/1.2 var(--display);color:var(--accent)}
 .mask-view-identity span,.mask-view-identity small{color:var(--muted);font-size:13px}
 .mask-view-copy p{margin:0 0 12px;max-width:62ch}
-.museum-facts{width:100%;margin:2px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035)}
-.museum-facts>b{display:block;margin-bottom:7px;color:var(--accent);font:800 14px var(--display)}
-.museum-facts p{display:grid;grid-template-columns:minmax(92px,.34fr) minmax(0,1fr);gap:7px;margin:0;padding:5px 0;border-top:1px solid rgba(255,255,255,.06);font-size:12px;line-height:1.35}
-.museum-facts strong{color:var(--muted)}
-.museum-facts span{overflow-wrap:anywhere}
-.museum-facts p:first-of-type{border-top:0}
 .mask-view-context{font-size:13px;color:var(--muted)}
 .mask-source{display:inline-block;margin:2px 0 8px;color:#8cdbd0;text-underline-offset:3px;font-size:13px;font-weight:700}
 .mask-rights{display:block;margin-bottom:14px;color:var(--muted);font-size:11px}
@@ -198,16 +192,6 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:8px}
 .tcard b{font:800 16px var(--display)}
 .tcard b em{font-style:normal;color:var(--accent);font-family:var(--body);font-weight:600;font-size:13px;margin-left:6px}
 .tcard p{margin:4px 0 0;font-size:14px}
-.tcard small{display:block;margin-top:8px;color:var(--muted);font-size:11px;line-height:1.4}
-.tcard small a{color:#8cdbd0;text-underline-offset:3px}
-.proverb-day{border-color:rgba(245,154,46,.45);background:linear-gradient(145deg,rgba(245,154,46,.11),rgba(255,255,255,.04))}
-.proverb-day>small:first-child{color:var(--accent);font-weight:800}
-.proverb-day>b{display:block;margin-top:8px;font:800 20px/1.2 var(--display)}
-.herb-row{display:grid;grid-template-columns:minmax(90px,1fr) minmax(100px,1fr);gap:4px 12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07)}
-.herb-row:last-child{border-bottom:0}
-.herb-row>span{color:var(--muted);text-align:right}
-.herb-row>small{grid-column:1/-1;color:var(--muted);font-size:11px}
-.recipe-video video{display:block;width:100%;max-height:360px;margin-top:10px;border-radius:10px;background:#0b1110}
 .cook-guide{padding:16px;border-color:rgba(245,154,46,.55);background:linear-gradient(145deg,rgba(245,154,46,.13),rgba(255,255,255,.045))}.cook-guide>small{display:block;color:var(--accent);font-weight:700;margin-bottom:6px}.cook-guide>b{display:block;font:800 19px/1.2 var(--display);margin-bottom:8px}.cook-guide .btn{margin-top:12px;min-height:46px}.cook-count{margin-top:12px!important;color:var(--muted);font-size:12px!important}.cook-list{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 18px}.cook-list .chip.have{border-color:rgba(90,190,130,.55);color:#9ce1b6}
 .dots{display:flex;gap:8px;margin:10px 0}
 .dot{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.12);transition:.08s}
@@ -943,4 +927,62 @@ button:not(:disabled):active,.btn:active,.mbtn:active,.tile:active{transform:sca
 @media (orientation:landscape) and (max-height:480px){
   .museum-room-side.collapsed{top:auto;bottom:8px;max-height:none}
   .museum-room-side.collapsed h3{font-size:16px}
+}
+
+/* ===== v0.20.2 : mobile en paysage, fenêtres compactes (carte, dialogues, discussion, panneaux) ===== */
+@media (orientation:landscape) and (max-height:480px){
+  /* dialogue de personnage : une petite carte à droite, au-dessus de la barre */
+  #dialog{left:auto!important;right:var(--gr);bottom:calc(var(--gb) + 50px);width:min(320px,42vw)!important;padding:8px 10px;border-radius:16px;max-height:calc(100dvh - 70px)}
+  #dialog .dhead{gap:8px;margin-bottom:4px}
+  #dlgAvatar{width:38px;height:38px}
+  #dlgName{font-size:14px}#dlgRole{font-size:10.5px}
+  #dlgWo{font-size:13px}#dlgFr{font-size:12.5px;line-height:1.3;margin:0 0 6px;max-height:34vh}
+  #dialog .spk{width:30px;height:30px;min-width:30px;min-height:30px}
+  #dialog .row{gap:6px}#dialog .btn{min-height:34px;padding:0 10px;font-size:13px;line-height:1.15}
+  body.kids #dlgGo,body.kids #dlgLater{min-height:38px;font-size:14px}body.kids #dlgFr{font-size:14px}
+  /* carte de l'Afrique */
+  #mapov{padding:8px}
+  .mapcard{width:min(460px,62vw);max-height:calc(100dvh - 16px);padding:8px 10px 10px;border-radius:16px}
+  .maphead{margin-bottom:4px}.maphead h2{font-size:15px}
+  #mapClose{width:34px;height:34px;min-height:34px}
+  .mapcard input{min-height:34px;font-size:13px;padding-top:0;padding-bottom:0}
+  .mapcard .chip,.mapcard [data-reg],.mapcard .chips button{min-height:30px;padding:0 10px;font-size:12px}
+  .mapcard .amap svg{max-height:44vh}
+  .mapcard p,.mapcard small{font-size:11.5px;line-height:1.3}
+  /* panneaux latéraux (quêtes, inventaire, contes…) */
+  #panel{width:min(330px,44vw)}
+  #tabs button{font-size:11.5px;padding:0 6px;min-height:32px}
+  #panelBody{font-size:12.5px}#panelBody h3{font-size:14px}
+  #closeP{width:32px;height:32px}
+  /* discussion du monde ouvert */
+  #chat{width:min(280px,38vw);padding:6px 8px;gap:4px;border-radius:14px;max-height:calc(100dvh - 70px)}
+  #chat header{font-size:12.5px}#chat header button{width:28px;height:28px;font-size:17px}
+  #chatLog{font-size:12px;min-height:40px}#chatLog .sys,#chatLog .err{font-size:11px}
+  #chatPl{max-height:70px}#chatPl div{font-size:11.5px}
+  #chatF input{min-height:34px;font-size:14px;padding:0 10px}#chatF button{min-height:34px;font-size:12px}
+  /* école, gardien de la mémoire, atelier : cartes réduites, pas plein cadre */
+  #learn,#elder,#lab{padding:6px}
+  #learn .lcard,#elder .elcard,#lab .lcard{width:min(580px,76vw)!important;height:auto!important;max-height:calc(100dvh - 12px)!important;border-radius:16px!important;font-size:13px}
+  #learn .lcard h2,#elder .elcard h2,#lab .lcard h2{font-size:16px}
+  #learn .lcard .btn,#elder .elcard .btn,#lab .lcard .btn{min-height:36px;font-size:13px}
+  /* pause, accueil, nouvelle aventure */
+  #pause>.glass{width:min(380px,60vw)!important;padding:10px!important}
+  #welcome .card{max-width:min(520px,60vw);font-size:13px}
+  #welcome .card h2{font-size:18px}
+  #welcome .card .btn{min-height:38px;font-size:13px}
+  /* musée */
+  .museum-room-side{width:min(280px,38vw)}
+  .museum-room-side h3{font-size:15px}.museum-room-side p{font-size:12px}
+}
+@media (orientation:landscape) and (max-height:480px){
+  /* carte : à gauche le dessin, à droite recherche, régions et fiche du village */
+  .amap{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);grid-template-areas:"w c" "w r" "w i" "w k" "w n";grid-template-rows:auto auto auto auto 1fr;column-gap:10px;align-items:start}
+  .amap .mwrap{grid-area:w}.amap .mctl{grid-area:c}.amap .mregs{grid-area:r;flex-wrap:wrap}.amap .minfo{grid-area:i}.amap .mkey{grid-area:k}.amap>.note{grid-area:n}
+  .amap .mregs button{min-height:28px;padding:0 8px;font-size:11.5px}
+  .amap .mwrap svg,.mapcard .amap svg{max-height:62vh}
+  .mapcard,#welcome .card:has(.amap){width:min(680px,84vw)}
+  #welcome .card:has(.amap){max-width:min(680px,84vw)}
+  .amap .mkey{font-size:11px}.amap>.note{font-size:10.5px;line-height:1.25}
+  /* messages : à gauche quand un dialogue est ouvert */
+  body:has(#dialog:not([hidden])) #toast{left:calc(var(--gx) + 96px);transform:none;max-width:calc(100% - min(320px,42vw) - var(--gx) - 96px - var(--gr) - 14px)}
 }

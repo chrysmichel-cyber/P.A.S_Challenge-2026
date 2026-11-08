@@ -17,9 +17,7 @@ window.LCA.add=function(o){
  var h=o.hello||'';
  var d={names:{awa:'La conteuse',fatou:'La cuisinière',drum:'Le musicien',ibou:'L’enseignant(e)',hist:'Le gardien de la mémoire'},
   greet:{awa:h,fatou:h,drum:h,ibou:h,hist:h},drum:{name:'tambour',pat:'B.S.BSS.'},river:{wo:'',fr:'Le grand cours d’eau nourrit le village.'},
-  board:['1 · 2 · 3','4 · 5'],words:[],tales:[],recipes:[],trad:[],history:[],figure:null,
-  /* Fiches éditoriales facultatives. Elles restent vides tant qu'une source et une relecture n'ont pas été ajoutées. */
-  proverbs:[],familyNames:[],guides:[],herbs:[],sources:[],contributors:[]};
+  board:['1 · 2 · 3','4 · 5'],words:[],tales:[],recipes:[],trad:[],history:[],figure:null,sources:[],contributors:[]};
  var r={};Object.keys(d).forEach(function(k){r[k]=d[k]});Object.keys(o).forEach(function(k){r[k]=o[k]});
  window.LCA.langs[o.id]=r;return r};
 window.LCA.regionColors={ouest:'#f59a2e',nord:'#e6c15a',est:'#2dd4bf',centrale:'#38b6ff',australe:'#e879f9'};

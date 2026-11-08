@@ -50,7 +50,7 @@ function create(ctx){
  /* ---- Prononciation ---- */
  async function loadRef(i){const w=W()[i];refAudio=null;refList=[];try{refList=await refStore().forWord(L().id,w.wo,w.fr);const b=RF.best(refList);if(b){const r=await refStore().get(b.id);if(r&&r.audio&&r.audio.blob)refAudio={meta:b,blob:r.audio.blob,url:URL.createObjectURL(r.audio.blob)}}}catch(e){}}
  function pronView(){const i=cur===null?0:cur,w=W()[i];
-  const rf=refAudio?'<p class="sub">Voix de référence : <b>'+esc(refAudio.meta.speaker)+'</b> · '+esc(refRoleName[refAudio.meta.role]||refRoleName.speaker)+(refAudio.meta.region?' ('+esc(refAudio.meta.region)+')':'')+' · '+RF.statusOf(refAudio.meta).label+'</p><audio controls src="'+refAudio.url+'" style="width:100%" aria-label="Voix de référence"></audio>':'<p class="note">Aucune voix de référence pour ce mot. Le bouton « Écouter » utilise la synthèse vocale du navigateur, qui n’est pas la voix d’un locuteur. Un locuteur peut en ajouter une (« Voix de locuteurs »).</p>';
+  const rf=refAudio?'<p class="sub">Voix de référence : <b>'+esc(refAudio.meta.speaker)+'</b>'+(refAudio.meta.region?' ('+esc(refAudio.meta.region)+')':'')+' · '+RF.statusOf(refAudio.meta).label+'</p><audio controls src="'+refAudio.url+'" style="width:100%" aria-label="Voix de référence"></audio>':'<p class="note">Aucune voix de référence pour ce mot. Le bouton « Écouter » utilise la synthèse vocale du navigateur, qui n’est pas la voix d’un locuteur. Un locuteur peut en ajouter une (« Voix de locuteurs »).</p>';
   return head('Prononcer',1)+'<label class="labsel">Mot<select id="labWord">'+wordOpts(i)+'</select></label><div class="labcard"><b class="big">'+esc(w.wo)+'</b><small>'+esc(w.fr)+'</small></div>'+rf+
    '<div class="row"><button class="btn ghost" data-lab="listen:'+i+'">🔊 Écouter (synthèse)</button>'+(rec?'<button class="btn warm" data-lab="recstop">■ Arrêter</button>':'<button class="btn warm" data-lab="recstart">● M’enregistrer</button>')+'</div>'+
    (mine?'<p class="sub">Ton enregistrement :</p><audio controls src="'+mine.url+'" style="width:100%" aria-label="Ton enregistrement"></audio><div class="row"><button class="btn ghost" data-lab="compare">Comparer avec la référence</button></div>':'')+
@@ -67,13 +67,12 @@ function create(ctx){
   try{const a=await decode(refAudio.blob),b=await decode(mine.blob);res=PR.compare(a.x,b.x,a.sr,b.sr)}catch(e){res={ok:false,error:'decode'}}render()}
  async function startMine(onDone,maxSec){try{const o=await micRecord(maxSec);setMsg('Enregistrement… parle maintenant (8 s au plus).');render();const r=await o.done;onDone(r)}catch(e){rec=null;setMsg('Micro refusé ou introuvable. Autorise le micro dans le navigateur.');render()}}
  /* ---- Voix de locuteurs ---- */
- const refRoleName={elder:'Aîné(e)',teacher:'Enseignant(e)',speaker:'Locuteur ou locutrice'};
- let refDraft=null,refRole='speaker';
+ let refDraft=null;
  function refView(){const i=cur===null?0:cur,w=W()[i],r=reviewer();
-  const lst=refList.map(m=>{const s=RF.statusOf(m);return '<div class="nbrow"><div><b>'+esc(m.speaker)+'</b><small>'+(refRoleName[m.role]||refRoleName.speaker)+(m.region?' · '+esc(m.region):'')+'</small> <em class="rvchip '+(s.id==='valide'?'valide':s.id==='conteste'?'conteste':'en_cours')+'">'+s.label+' · '+s.ok+' ✓ '+s.bad+' ✗</em></div><div class="row"><button class="btn ghost sm" data-lab="rplay:'+m.id+'">▶ Écouter</button><button class="btn ghost sm" data-lab="rvote:'+m.id+':ok">Fidèle</button><button class="btn ghost sm" data-lab="rvote:'+m.id+':bad">À refaire</button></div></div>'}).join('');
-  return head('Voix de locuteurs',1)+'<p class="note">Seules des personnes qui se déclarent locutrices de la langue et qui sont d’accord peuvent ajouter une voix. Le rôle (aîné(e), enseignant(e) ou locuteur) est déclaré par la personne, pas vérifié. L’enregistrement reste sur cet appareil ; la validation par d’autres locuteurs est aussi déclarative.</p>'+
+  const lst=refList.map(m=>{const s=RF.statusOf(m);return '<div class="nbrow"><div><b>'+esc(m.speaker)+'</b>'+(m.region?' · '+esc(m.region):'')+' <em class="rvchip '+(s.id==='valide'?'valide':s.id==='conteste'?'conteste':'en_cours')+'">'+s.label+' · '+s.ok+' ✓ '+s.bad+' ✗</em></div><div class="row"><button class="btn ghost sm" data-lab="rplay:'+m.id+'">▶ Écouter</button><button class="btn ghost sm" data-lab="rvote:'+m.id+':ok">Fidèle</button><button class="btn ghost sm" data-lab="rvote:'+m.id+':bad">À refaire</button></div></div>'}).join('');
+  return head('Voix de locuteurs',1)+'<p class="note">Seules des personnes qui se déclarent locutrices de la langue et qui sont d’accord peuvent ajouter une voix. Elle reste sur cet appareil ; la validation par d’autres locuteurs est déclarative.</p>'+
    '<label class="labsel">Mot<select id="labWord">'+wordOpts(i)+'</select></label>'+(lst||'<p class="sub">Aucune voix pour ce mot.</p>')+
-   '<div class="accform oform"><h3>Ajouter ma voix</h3><label>Mon nom ou pseudo<input id="rfName" type="text" maxlength="60" value="'+esc(r?r.name:'')+'"></label><label>Rôle de la personne qui parle<select id="rfRole"><option value="elder"'+(refRole==='elder'?' selected':'')+'>Aîné(e)</option><option value="teacher"'+(refRole==='teacher'?' selected':'')+'>Enseignant(e)</option><option value="speaker"'+(refRole==='speaker'?' selected':'')+'>Locuteur ou locutrice</option></select></label><label>Région <small>(facultatif)</small><input id="rfReg" type="text" maxlength="60"></label>'+
+   '<div class="accform oform"><h3>Ajouter ma voix</h3><label>Mon nom ou pseudo<input id="rfName" type="text" maxlength="60" value="'+esc(r?r.name:'')+'"></label><label>Région <small>(facultatif)</small><input id="rfReg" type="text" maxlength="60"></label>'+
    '<label class="chk"><input id="rfNat" type="checkbox"'+(r&&r.native?' checked':'')+'> Je suis locuteur ou locutrice de cette langue.</label><label class="chk"><input id="rfCons" type="checkbox"> Je suis d’accord pour que ma voix soit utilisée comme référence dans ce jeu (sur cet appareil).</label>'+
    '<div class="row">'+(rec?'<button class="btn warm" data-lab="recstop">■ Arrêter</button>':'<button class="btn warm" data-lab="rrecstart">● Enregistrer le mot</button>')+'</div>'+
    (refDraft?'<audio controls src="'+refDraft.url+'" style="width:100%" aria-label="Ma voix"></audio><div class="row"><button class="btn warm" data-lab="rsave">Ajouter cette voix</button></div>':'')+'</div>'+note()}
@@ -104,7 +103,7 @@ function create(ctx){
   if(act.indexOf('rplay:')===0){const r=await refStore().get(P(act)[1]);if(r&&r.audio)new Audio(URL.createObjectURL(r.audio.blob)).play();return}
   if(act.indexOf('rvote:')===0){const p=P(act),r=await refStore().vote(p[1],reviewer(),p[2]);setMsg(r.ok?'Avis enregistré : '+r.status.label+'.':({reviewer:'Déclare-toi d’abord locuteur (onglet « Proposer un mot »).',native:'Seuls les locuteurs peuvent donner un avis.',self:'Tu ne peux pas valider ta propre voix.'}[r.error]||'Échec.'));await loadRef(cur);return render()}
   if(act==='rsave'){if(!refDraft){setMsg('Enregistre d’abord le mot.');return}const v=id=>($(id)||{}).value||'',w=W()[cur],ch=id=>!!($(id)||{}).checked;
-   const r=await refStore().add({lang:L().id,form:w.wo,fr:w.fr,speaker:v('#rfName'),role:v('#rfRole'),region:v('#rfReg'),native:ch('#rfNat'),consent:ch('#rfCons'),dur:refDraft.dur},{blob:refDraft.blob,type:refDraft.blob.type});
+   const r=await refStore().add({lang:L().id,form:w.wo,fr:w.fr,speaker:v('#rfName'),region:v('#rfReg'),native:ch('#rfNat'),consent:ch('#rfCons'),dur:refDraft.dur},{blob:refDraft.blob,type:refDraft.blob.type});
    if(!r.ok){setMsg({consent:'Coche l’accord : la voix ne peut être utilisée qu’avec ton consentement.',native:'Seuls les locuteurs de la langue peuvent ajouter une voix de référence.',speaker:'Écris ton nom ou un pseudo.',audio:'Enregistre d’abord le mot.',toobig:'Enregistrement trop long.',storage:'Stockage indisponible.'}[r.errors[0]]||'Échec.');return}
    refDraft=null;await loadRef(cur);setMsg('Voix ajoutée. Elle est « proposée » : deux autres locuteurs doivent la confirmer.');return render()}
   if(act==='pwho'){const v=id=>($(id)||{}).value||'',r=RV.setReviewer(ctx.rvStore(),{name:v('#pvName'),native:!!($('#pvNat')||{}).checked,qualification:''});if(!r.ok){setMsg('Écris ton nom ou un pseudo.');return}ctx.save();return render()}
@@ -114,13 +113,12 @@ function create(ctx){
   if(act.indexOf('pvote:')===0){const p=P(act),k=p[1].split('|'),r=RV.submit(ctx.rvStore(),L().id,decodeURIComponent(k[0]),decodeURIComponent(k[1]),p[2]);if(r.ok)ctx.save();setMsg(r.ok?'Avis enregistré.':({reviewer:'Déclare-toi d’abord.',native:'Réservé aux locuteurs.'}[r.error]||'Échec.'));return render()}
  }
  root.addEventListener('click',onClick);
- root.addEventListener('change',async e=>{if(e.target.id==='rfRole'){refRole=e.target.value;return}if(e.target.id==='labWord'){cur=+e.target.value;mine=null;res=null;await loadRef(cur);render()}});
+ root.addEventListener('change',async e=>{if(e.target.id==='labWord'){cur=+e.target.value;mine=null;res=null;await loadRef(cur);render()}});
  root.addEventListener('input',e=>{const i=e.target.dataset&&e.target.dataset.note;if(i!==undefined&&i!==''){const c=srs().cards[i];if(c){c.note=e.target.value.slice(0,200);clearTimeout(onNote.t);onNote.t=setTimeout(ctx.save,400)}}});
  const onNote=()=>{};
  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&open){e.stopPropagation();close()}},true);
  function openLab(v){if(ctx.onOpen)ctx.onOpen();prevFocus=document.activeElement;open=true;view=v||'home';sess=null;msg='';root.hidden=false;render();const f=root.querySelector('button');if(f)f.focus()}
- async function openReferences(){if(W().length){cur=0;await loadRef(cur)}openLab('ref')}
  function close(){if(rec){try{rec.r.stop()}catch(e){}}open=false;root.hidden=true;[mine,refDraft,refAudio].forEach(x=>{try{x&&x.url&&URL.revokeObjectURL(x.url)}catch(e){}});mine=null;refDraft=null;refAudio=null;res=null;if(prevFocus&&prevFocus.focus)try{prevFocus.focus()}catch(e){}}
- return {open:openLab,openReferences,close,isOpen:()=>open,_s:()=>({view,cur,sess})}}
+ return {open:openLab,close,isOpen:()=>open,_s:()=>({view,cur,sess})}}
 LCA.lab={create};
 })(window.LCA=window.LCA||{});
