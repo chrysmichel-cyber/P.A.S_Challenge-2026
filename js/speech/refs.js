@@ -9,7 +9,7 @@
  const key=(lang,form,fr)=>line(lang,40)+'|'+line(form,120).toLowerCase()+'|'+line(fr,160).toLowerCase();
  function sanitize(m){m=m&&typeof m==='object'?m:{};const votes={};
   if(m.votes&&typeof m.votes==='object')Object.keys(m.votes).slice(0,30).forEach(k=>{const v=m.votes[k];if(!v||(v.d!=='ok'&&v.d!=='bad'))return;votes[line(k,60).toLowerCase()]={d:v.d,name:line(v.name||k,60),native:v.native===true,at:isFinite(+v.at)?+v.at:0}});
-  return {id:typeof m.id==='string'?m.id.replace(/[^a-z0-9]/gi,'').slice(0,32):'',lang:line(m.lang,40),form:line(m.form,120),fr:line(m.fr,160),speaker:line(m.speaker,60),native:m.native===true,consent:m.consent===true,
+  return {id:typeof m.id==='string'?m.id.replace(/[^a-z0-9]/gi,'').slice(0,32):'',lang:line(m.lang,40),form:line(m.form,120),fr:line(m.fr,160),speaker:line(m.speaker,60),role:['elder','teacher'].indexOf(m.role)>=0?m.role:'speaker',native:m.native===true,consent:m.consent===true,
    region:line(m.region,60),mime:line(m.mime,60),size:isFinite(+m.size)?Math.max(0,+m.size):0,dur:isFinite(+m.dur)?Math.min(MAX_SEC,Math.max(0,+m.dur)):0,created:isFinite(+m.created)?+m.created:0,votes}}
  function validate(m,o){o=o||{};const e=[];if(!m.lang||(o.langs&&!o.langs[m.lang]))e.push('lang');if(!m.form||!m.fr)e.push('word');if(!m.speaker)e.push('speaker');if(!m.native)e.push('native');if(!m.consent)e.push('consent');
   if(!o.hasAudio)e.push('audio');if(m.size>MAX_BYTES)e.push('toobig');return e}

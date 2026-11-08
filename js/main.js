@@ -107,14 +107,36 @@ function tContes(){
  h+=(T.moral?'<div class="moral"><b>Ce que dit le conte.</b> '+esc(T.moral)+'</div>':'')+'<div class="row"><button class="btn sm '+(D().flags.tale?'ghost':'warm')+'" data-act="tale">'+(D().flags.tale?'Conte déjà terminé':'J’ai terminé ce conte')+'</button></div></div>';
  h+='<p class="note">La lecture vocale se fait en français : aucune voix '+esc(L.name)+' n’est disponible dans le navigateur. Contes écrits pour ce prototype, sans source documentée : contenu à faire valider avant publication.</p>';
  return h}
+const safeContentUrl=u=>{if(!u)return '';try{const x=new URL(String(u),location.href);return (x.protocol==='https:'||x.origin===location.origin)?esc(u):''}catch(e){return ''}};
+const plainKey=s=>String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+function herbariumHtml(L){
+ const explicit=(L.herbs||[]).filter(x=>x&&x.frName&&x.localName&&safeContentUrl(x.sourceUrl)&&x.reviewedBy);
+ let rows=explicit.map(x=>({fr:x.frName,lo:x.localName,part:x.part||'',use:x.culinaryUse||'',benefit:x.benefit&&safeContentUrl(x.benefitSourceUrl)?x.benefit:'',benefitSourceUrl:x.benefitSourceUrl,source:x.source,sourceUrl:x.sourceUrl,reviewedBy:x.reviewedBy}));
+ if(!rows.length){
+  const plant=/\b(farine|mais|mil|feuille|manioc|gombo|tomate|oignon|ail|gingembre|huile|arachide|pate|piment|riz|citron|persil|cumin|epice|soumbala|injera|feve|haricot|courge|banane|patate|igname|sorgho|safran|berbere|coriandre|basilic|menthe)\b/;
+  const found=Object.create(null);
+  (L.recipes||[]).forEach(r=>(r.ing||[]).forEach(g=>{if(!g||!plant.test(plainKey(g[0])))return;const key=plainKey(g[0]);if(!found[key]){const w=g[3]?wordOf(g[3]):null;found[key]={fr:g[0],lo:w&&!w.miss?w.wo:'Nom local à documenter',uses:[]}}if(found[key].uses.indexOf(r.name)<0)found[key].uses.push(r.name)}));
+  rows=Object.keys(found).map(k=>({fr:found[k].fr,lo:found[k].lo,use:'Ingrédient de '+found[k].uses.join(', ')}));
+ }
+ let h='<h3>Herbier culinaire · '+esc(L.name)+'</h3><p class="sub">Plantes repérées dans les ingrédients des recettes du jeu. Le nom local est affiché seulement s’il existe dans le vocabulaire documenté.</p>';
+ h+=rows.length?'<div class="tcard">'+rows.map(x=>'<p class="herb-row"><b>'+esc(x.fr)+'</b><span>'+esc(x.lo)+'</span>'+(x.part?'<small>Partie utilisée : '+esc(x.part)+'</small>':'')+(x.use?'<small>'+esc(x.use)+'</small>':'')+(x.benefit?'<small>Bienfait rapporté : '+esc(x.benefit)+' · <a href="'+safeContentUrl(x.benefitSourceUrl)+'" target="_blank" rel="noopener">source santé</a></small>':'')+(x.sourceUrl?'<small>Source : <a href="'+safeContentUrl(x.sourceUrl)+'" target="_blank" rel="noopener">'+esc(x.source||'notice documentée')+'</a>'+(x.reviewedBy?' · relu par '+esc(x.reviewedBy):'')+'</small>':'')+'</p>').join('')+'</div>':'<div class="tcard"><b>Herbier à documenter</b><p>Aucune plante n’est encore recensée pour cette langue.</p></div>';
+ h+='<p class="note">Aucun bienfait médicinal n’est affirmé ici. Il faut une source de santé publique ou scientifique adaptée et une relecture locale avant d’afficher un tel usage.</p>';return h
+}
+function recipeVideosHtml(R){
+ const clips=(R.videos||[]).filter(v=>v&&v.url&&v.consent===true&&v.rights&&safeContentUrl(v.url));
+ let h='<h3>Vidéo pas à pas</h3>';
+ if(!clips.length)return h+'<div class="tcard"><b>Vidéo à ajouter</b><p>Aucune vidéo avec accord de diffusion et crédit n’est encore publiée pour cette recette. Le guide interactif en 3D reste disponible.</p></div>';
+ clips.forEach(v=>{h+='<div class="tcard recipe-video"><b>'+esc(v.title||('Préparation de '+R.name))+'</b>'+(v.presenter?'<p>Avec '+esc(v.presenter)+'</p>':'')+'<video controls playsinline preload="metadata"'+(safeContentUrl(v.poster)?' poster="'+safeContentUrl(v.poster)+'"':'')+' aria-label="Tutoriel vidéo : '+esc(v.title||R.name)+'"><source src="'+safeContentUrl(v.url)+'"'+(v.type?' type="'+esc(v.type)+'"':'')+'></video>'+(v.sourceUrl?'<small><a href="'+safeContentUrl(v.sourceUrl)+'" target="_blank" rel="noopener">'+esc(v.source||'Crédit et autorisation de la vidéo')+'</a></small>':'<small>'+esc(v.rights)+'</small>')+'</div>'});return h
+}
 function tRecettes(){
- if(!lang().recipes.length)return todo('Recettes','Aucune recette n’est documentée pour '+esc(lang().name)+'.');
+ if(!lang().recipes.length)return todo('Recettes','Aucune recette n’est documentée pour '+esc(lang().name)+'.')+herbariumHtml(lang());
  const L=lang(),R=L.recipes[recIdx%L.recipes.length],k=servings/R.base;
  if(cookSession&&cookSession.recipe===recIdx)return tCooking(R,k);
  let h='<div class="seg">'+L.recipes.map((r,i)=>'<button data-rec="'+i+'" aria-pressed="'+(i===recIdx)+'">'+esc(r.name)+'</button>').join('')+'</div>';
  h+='<h2>'+esc(R.name)+'</h2>'+'<span class="vr">Validation requise</span>'+'<p class="sub">'+esc(R.intro)+'</p><div class="serv"><span>Pour</span><button data-sv="-1" aria-label="Moins de parts">−</button><output>'+servings+'</output><button data-sv="1" aria-label="Plus de parts">+</button><span>personnes</span></div><h3>Ingrédients</h3><ul class="ing">';
  R.ing.forEach(g=>{h+='<li><span>'+esc(g[0])+(g[3]?'<em>'+esc(g[3])+'</em>':'')+'</span><span>'+esc(fmtQty(g[1]*k)+(g[2]?' '+g[2]:''))+'</span></li>'});
  h+='</ul><h3>Préparation</h3><ol class="steps">'+R.steps.map(s=>'<li>'+esc(s)+'</li>').join('')+'</ol>';
+ h+=recipeVideosHtml(R)+herbariumHtml(L);
  h+='<p class="note">Les mots en orange sont à retenir en '+esc(L.name)+'. Recette courante non sourcée, quantités indicatives : contenu à faire valider.</p>';
  if(gotTypes()>=4&&D().flags.delivered){h+='<div class="tcard"><b>La cuisine de Fatou</b><p>Ajoute les aliments un par un, puis réalise les gestes de la recette dans la scène 3D.</p><button class="btn warm sm" data-act="cookStart">'+(D().flags.cooked?'Recommencer la préparation':'Commencer à cuisiner avec Fatou')+'</button></div>'}
  return h}
@@ -131,6 +153,10 @@ function tMusee(){const L=lang(),animals=Object.keys(LCA.animals.FR).map(k=>({fr
  h+='<p class="note">Les noms et usages sont rapportés d’après les notices muséales. Quand un catalogue ne donne pas de nom traditionnel, cela est signalé explicitement.</p><h3>Les animaux · vocabulaire</h3><p class="sub">Compare les noms français et ceux déjà documentés dans la langue locale de '+esc(L.name)+'.</p><div class="chips">'+animals.map(a=>'<button class="chip" data-animal="'+esc(a.lo||'')+'" '+(a.lo?'':'disabled')+'><b>'+esc(a.fr)+'</b>'+(a.lo?' · '+esc(a.lo):' · à documenter')+'</button>').join('')+'</div><p class="note">Les mots absents du vocabulaire ne sont ni traduits ni devinés.</p>';return h}
 let maskMode='photo',maskZoom=null,exhibitCur=null,exhibitList=[];
 function villageMuseum(){return LCA.museum.forLang(lang(),MASKS,window.LCA.museumInstruments||[],LCA.regions)}
+function museumFactsHtml(item){
+ const facts=[['Formes observées',item.forms],['Matériaux',item.materials],['Couleurs et motifs',item.colors],['Symbolique rapportée',item.symbolism],['Danse ou performance',item.performance]];
+ return '<div class="museum-facts"><b>Ce que dit la notice</b>'+facts.map(([label,value])=>'<p><strong>'+label+'</strong><span>'+esc(value||'Non précisé dans la notice consultée.')+'</span></p>').join('')+'</div>'
+}
 function setMaskMode(m){const stage=$('#maskStage');maskMode=m==='3d'?'3d':'photo';stage.classList.toggle('mode-3d',maskMode==='3d');stage.classList.toggle('mode-photo',maskMode==='photo');
  document.querySelectorAll('[data-mmode]').forEach(b=>b.setAttribute('aria-selected',String(b.dataset.mmode===maskMode)));
  $('#maskViewHint').textContent=maskMode==='3d'?'Glisse pour tourner · molette ou pincement pour zoomer':'Molette ou pincement pour zoomer · glisse pour déplacer · double-clic pour agrandir';
@@ -141,7 +167,7 @@ function renderMaskThumbs(){const box=$('#maskThumbs');box.innerHTML=exhibitList
  const on=box.querySelector('[aria-pressed=true]');if(on&&on.scrollIntoView)on.scrollIntoView({block:'nearest',inline:'center'})}
 function showMuseumItem(item){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];exhibitCur=item;$('#maskViewTitle').textContent=item.traditionalName;const ph=$('#maskViewPhoto');ph.src=item.image;ph.alt='Photo de '+(instrument?'l’instrument '+item.traditionalName:item.catalogName)+' provenant de la collection documentée';
  $('#maskViewIdentity').innerHTML=instrument?'<b>'+esc(item.people)+'</b><span>Instrument de musique · '+esc(item.place)+'</span>':'<b>'+esc(item.people)+'</b><span>'+esc(item.place)+' · '+esc(item.regionName)+'</span><small>Nom du catalogue : '+esc(item.catalogName)+'</small><small>'+esc(item.nameNote)+'</small>'+(item.tierLabel?'<small class="mask-tier">'+esc(item.tierLabel)+'</small>':'');
- $('#maskViewDesc').textContent=item.description;$('#maskViewContext').textContent=instrument?'Modèle 3D en relief interprété depuis la photo de référence ; consulte la notice et le crédit de l’image ci-dessous.':'Région de visite du jeu : '+(region?region.name:item.regionName)+'. Les villages disponibles sont des repères régionaux, pas une carte des territoires culturels.';
+ $('#maskViewDesc').textContent=item.description;$('#maskViewFacts').innerHTML=museumFactsHtml(item);$('#maskViewContext').textContent=instrument?'Modèle 3D en relief interprété depuis la photo de référence ; consulte la notice et le crédit de l’image ci-dessous.':'Région de visite du jeu : '+(region?region.name:item.regionName)+'. Les villages disponibles sont des repères régionaux, pas une carte des territoires culturels.';
  const source=$('#maskViewSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#maskViewRights').textContent=item.imageSource?item.rights+' · Image : '+item.imageSource+' ('+item.imageRights+')':item.rights;
  const go=$('#maskViewGoRegion');go.hidden=instrument;if(!instrument){go.dataset.maskId=item.id;go.textContent='Explorer '+(region?region.name:item.regionName)+' sur la carte'}
  const i=exhibitList.findIndex(m=>m.id===item.id);$('#maskCount').textContent=exhibitList.length>1?(i+1)+' / '+exhibitList.length:'';$('#maskPrev').hidden=$('#maskNext').hidden=exhibitList.length<2;
@@ -154,7 +180,7 @@ function closeMaskViewer(){const modal=$('#maskViewer');if(modal.hidden)return;m
 function exploreMaskRegion(maskId){const mask=MASKS.find(m=>m.id===(maskId||$('#maskViewGoRegion').dataset.maskId));if(!mask)return;const region=REGION_BY_ID[mask.region];closeMaskViewer();if(museumOpen)closeMuseumRoom();if(!region)return;if(!region.langs.includes(mapSel))mapSel=region.langs.find(id=>LANGS[id])||state.lang;openMap(region.id)}
 let museumGallery=null,museumNow=null;
 const MUSEUM_INSTRUMENTS=window.LCA.museumInstruments||[];
-function showMuseumExhibit(item,sourceType){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];$('#museumExhibitName').textContent=item.traditionalName;$('#museumExhibitIdentity').textContent=instrument?'Instrument de musique · '+item.people+' · '+item.place:item.people+' · '+item.place+' · '+item.catalogName+' · '+item.nameNote;$('#museumExhibitDescription').textContent=item.description;const source=$('#museumExhibitSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#museumExhibitRights').textContent=item.imageSource?item.rights+' · Image : '+item.imageSource+' ('+item.imageRights+')':item.rights;
+function showMuseumExhibit(item,sourceType){if(!item)return;const instrument=item.kind==='instrument',region=instrument?null:REGION_BY_ID[item.region];$('#museumExhibitName').textContent=item.traditionalName;$('#museumExhibitIdentity').textContent=instrument?'Instrument de musique · '+item.people+' · '+item.place:item.people+' · '+item.place+' · '+item.catalogName+' · '+item.nameNote;$('#museumExhibitDescription').textContent=item.description;$('#museumExhibitFacts').innerHTML=museumFactsHtml(item);const source=$('#museumExhibitSource');source.href=item.url;source.textContent='Lire la notice officielle · '+item.source;$('#museumExhibitRights').textContent=item.imageSource?item.rights+' · Image : '+item.imageSource+' ('+item.imageRights+')':item.rights;
  const inspect=$('#museumInspectMask'),photo=$('#museumPhotoMask');inspect.hidden=photo.hidden=false;inspect.dataset.exhibitId=photo.dataset.exhibitId=item.id;inspect.textContent='Manipuler ce '+(instrument?'instrument':'masque')+' en 3D';
  const go=$('#museumExploreRegion');go.hidden=instrument;if(!instrument){go.dataset.maskId=item.id;go.textContent='Explorer '+(region?region.name:item.regionName)+' sur la carte'}
  const list=museumNow?museumNow.exhibits:[];$('#museumExhibits').innerHTML=list.map(m=>'<button type="button" data-exhibit="'+esc(m.id)+'" aria-pressed="'+(m.id===item.id)+'">'+esc(m.traditionalName)+(m.kind==='instrument'?' · instrument':' · masque')+'</button>').join('');setMuseumSide(false);if(sourceType==='canvas')openMuseumItemViewer(item,$('#museumGallery3d'),'3d')}
@@ -162,20 +188,39 @@ function enterMaskMuseum(){if(museumOpen)return;closeMaskViewer();closeDialog();
 function setMuseumSide(collapsed){const side=document.querySelector('.museum-room-side'),b=$('#museumSideToggle');side.classList.toggle('collapsed',!!collapsed);b.setAttribute('aria-expanded',String(!collapsed));b.textContent=collapsed?'Notice ▴':'Réduire ▾'}
 function closeMuseumRoom(){if(!museumOpen)return;museumOpen=false;$('#museumRoom').hidden=true;if(museumGallery)museumGallery.dispose();museumGallery=null;P.x=38;P.z=-.5;P.y=0;P.vy=0;P.heading=0;P.yaw=0;near=null;camSnapReq=true;$('#act').hidden=true}
 let PAT='B.S.BSS.';
+function dailyProverb(L){
+ const source=(L.proverbs&&L.proverbs.length?L.proverbs:null)||((L.tales||[]).filter(x=>x.kind==='proverbes').flatMap(t=>(t.items&&t.items.length?t.items:(t.paras||[]).map(text=>({text,meaning:t.meaning||t.moral||'',useCase:t.useCase||'',source:t.source||'',sourceUrl:t.sourceUrl||'',reviewedBy:t.reviewedBy||''})))));
+ if(!source.length)return '<div class="tcard"><b>Un jour, un proverbe</b><p>Aucun proverbe sourcé n’est encore documenté pour '+esc(L.name)+'. Son sens et une situation d’emploi seront ajoutés après relecture par un locuteur ou une locutrice.</p></div>';
+ const day=Math.floor(new Date().setHours(0,0,0,0)/86400000),p=source[((day%source.length)+source.length)%source.length],text=p.text||p.form||'';
+ const link=safeContentUrl(p.sourceUrl);return '<div class="tcard proverb-day"><small>Un jour, un proverbe · '+new Date().toLocaleDateString('fr-FR')+'</small><b>'+esc(p.local||p.form||L.name)+'</b><p>'+rich(text)+'</p>'+(p.fr?'<p><b>En français · </b>'+esc(p.fr)+'</p>':'')+'<p><b>Sens · </b>'+esc(p.meaning||'À expliquer avec le griot ou un locuteur ; aucune interprétation n’a été ajoutée.')+'</p><p><b>Quand l’utiliser · </b>'+esc(p.useCase||'Situation d’emploi à recueillir auprès d’un locuteur.')+'</p><small>'+(p.reviewedBy?'Relu par '+esc(p.reviewedBy)+' · ':'')+(link?'Source : <a href="'+link+'" target="_blank" rel="noopener">'+esc(p.source||'notice')+'</a>':'Texte du prototype · source et formulation à vérifier')+'</small></div>'
+}
+function culturalGuideHtml(L){
+ const known=(L.guides||[]).filter(g=>g&&g.title&&g.text),groups=[['saluer','Saluer un aîné'],['mariage','Étapes du mariage traditionnel'],['tabous','Interdits et tabous à connaître']];
+ let h='<h3>Codes culturels et traditions</h3><p class="sub">Les usages changent selon les familles, les lieux et les générations. Ces repères doivent être expliqués par un enseignant ou une personne compétente de la communauté.</p>';
+ groups.forEach(([id,title])=>{const found=known.filter(g=>g.topic===id);if(!found.length){h+='<div class="tcard"><b>'+title+'</b><p>Guide à documenter et à faire relire localement.</p></div>';return}found.forEach(g=>{const u=safeContentUrl(g.sourceUrl);h+='<div class="tcard"><b>'+esc(g.title)+'</b><p>'+esc(g.text)+'</p><small>'+(g.reviewedBy?'Relu par '+esc(g.reviewedBy)+' · ':'')+(u?'<a href="'+u+'" target="_blank" rel="noopener">'+esc(g.source||'Source')+'</a>':'Contenu à sourcer')+'</small></div>'})});return h
+}
+function familyNamesHtml(L){
+ const entries=(L.familyNames||[]).filter(x=>x&&x.name&&x.meaning&&x.public===true&&x.consent===true&&x.reviewedBy&&safeContentUrl(x.sourceUrl));
+ let h='<h3>Noms de famille, prénoms et lignées</h3>';
+ if(!entries.length)return h+'<div class="tcard"><b>Dictionnaire à constituer</b><p>Aucun nom ou récit de lignée n’est publié pour '+esc(L.name)+'. Les entrées devront être documentées, relues localement et partagées avec l’accord des personnes concernées.</p></div>';
+ h+='<div class="tcard">'+entries.map(x=>'<p><b>'+esc(x.name)+'</b>'+(x.kind?' · '+esc(x.kind):'')+'<br>'+esc(x.meaning)+(x.history?'<br>'+esc(x.history):'')+'<small>Relu par '+esc(x.reviewedBy)+' · <a href="'+safeContentUrl(x.sourceUrl)+'" target="_blank" rel="noopener">'+esc(x.source||'Source')+'</a></small></p>').join('')+'</div>';return h
+}
 function tTraditions(){
  const L=lang();PAT=L.drum.pat;
- let h='<h2>Traditions</h2>'+'<span class="vr">Validation requise</span>'+'<p class="sub">Ce que les gens du village te diraient en premier.</p>';
+ let h='<h2>Traditions & savoirs oraux</h2>'+'<span class="vr">Validation requise</span>'+'<p class="sub">Contenus culturels à explorer, avec leur niveau de documentation et leurs sources.</p>'+dailyProverb(L)+familyNamesHtml(L)+culturalGuideHtml(L);
  if(L.history.length||L.figure){h+='<h3>Histoire de la langue</h3>'+STYLIZED('histoire')+L.history.map(x=>'<p>'+esc(x)+'</p>').join('');if(L.figure){const f=L.figure;h+='<div class="tcard"><b>'+esc(f.name)+'<em>'+esc(f.years+' · '+f.role)+'</em></b><p>'+esc(f.bio)+'</p></div>'}h+='<p class="note">Textes de synthèse rédigés pour ce prototype, sans source citée : à vérifier avant diffusion.</p>'}
- if(!L.trad.length)h+=todo('Traditions','Aucune tradition documentée.');
+ if(!L.trad.length)h+='<div class="tcard"><b>Notices culturelles à compléter</b><p>Les anecdotes et pratiques de cette langue attendent des sources fiables et une relecture locale.</p></div>';
+ else h+='<p class="note">Les fiches ci-dessous sont des textes de prototype sans références indiquées ; elles restent à vérifier par une source fiable et des personnes de la communauté.</p>';
  L.trad.forEach(t=>{h+='<div class="tcard"><b>'+esc(t[0])+'<em>'+esc(t[1])+'</em></b><p>'+esc(t[2])+'</p></div>'});
  h+='<h3>Le rythme du '+esc(L.drum.name)+'</h3><p class="sub">Les ronds bordés de bleu sont les frappes graves, les autres des frappes claires.</p><div class="dots">';
  for(let i=0;i<8;i++)h+='<span class="dot'+(PAT[i]==='B'?' b':'')+'"'+(PAT[i]==='.'?' style="opacity:.3"':'')+'></span>';
  h+='</div><button class="btn warm sm" id="drumBtn">'+(drumTimer?'Arrêter':'Jouer le rythme')+'</button><p class="note">Rythme d’exemple, simplifié pour ce prototype. Il ne remplace pas un vrai musicien.</p>';
+ h+='<div class="row"><button class="btn ghost sm" data-act="oralContribution">Écouter ou enregistrer un récit avec accord</button></div><p class="note">Les enregistrements restent dans la bibliothèque locale du profil. Demande toujours l’accord du conteur ou de la conteuse avant d’enregistrer ou de partager.</p>';
  return h}
 function tApprendre(){
  const W=lang().W;
  if(!W.length)return todo('Apprendre : '+esc(lang().name),'Aucun mot n’est documenté pour cette langue.');
- let h='<h2>Apprendre le '+esc(lang().name)+'</h2>'+'<span class="vr">'+(lang().rv&&lang().rv.reviewed?'Relecture : '+lang().rv.reviewed+'/'+lang().rv.total+' mots':'À vérifier : brouillon')+'</span>'+'<p class="sub">'+learnedCount()+' mot(s) appris sur '+W.length+'</p><div class="seg"><button data-mode="cartes" aria-pressed="'+(learnMode==='cartes')+'">Cartes</button>'+(W.length>=4?'<button data-mode="quiz" aria-pressed="'+(learnMode==='quiz')+'">Quiz</button>':'')+'</div>';
+ let h='<h2>Apprendre le '+esc(lang().name)+'</h2>'+'<span class="vr">'+(lang().rv&&lang().rv.reviewed?'Relecture : '+lang().rv.reviewed+'/'+lang().rv.total+' mots':'À vérifier : brouillon')+'</span>'+'<p class="sub">'+learnedCount()+' mot(s) appris sur '+W.length+'</p><div class="row"><button class="btn warm" data-act="lessons">Leçons courtes guidées</button><button class="btn ghost" data-act="refVoices">Voix d’aînés et d’enseignants</button></div><div class="seg"><button data-mode="cartes" aria-pressed="'+(learnMode==='cartes')+'">Cartes</button>'+(W.length>=4?'<button data-mode="quiz" aria-pressed="'+(learnMode==='quiz')+'">Quiz</button>':'')+'</div>';
  if(learnMode==='cartes'){
   h+='<p class="sub">Touche une carte pour voir la traduction.</p>';
   Object.keys(GROUPS).forEach(g=>{h+='<h3>'+GROUPS[g]+'</h3><div class="wgrid">';
@@ -241,8 +286,10 @@ pbody.addEventListener('click',e=>{
  if((b=t.closest('[data-act]'))){const a=b.dataset.act;
   if(a==='closeperso'){closePanel();return}
   if(a==='museumVisit'){enterMaskMuseum();return}
+  if(a==='oralContribution'){closePanel();oralShow('oral');return}
   if(a==='savename'){const i=$('#heroName');setName(i?i.value:'','#nameMsg');return}
   if(a==='lessons'){closePanel();LCA.learn.openHub();return}
+  if(a==='refVoices'){closePanel();LCA.labUI.openReferences();return}
   if(a==='dash'){closePanel();LCA.learn.openDash();return}
   if(a==='lab'){closePanel();LCA.labUI.open();return}
   if(a==='cookBack'){cookSession=null;renderPanel();return}

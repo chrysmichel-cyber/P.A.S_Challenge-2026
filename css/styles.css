@@ -166,6 +166,12 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:8px}
 .mask-view-identity b{font:800 21px/1.2 var(--display);color:var(--accent)}
 .mask-view-identity span,.mask-view-identity small{color:var(--muted);font-size:13px}
 .mask-view-copy p{margin:0 0 12px;max-width:62ch}
+.museum-facts{width:100%;margin:2px 0 12px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:rgba(255,255,255,.035)}
+.museum-facts>b{display:block;margin-bottom:7px;color:var(--accent);font:800 14px var(--display)}
+.museum-facts p{display:grid;grid-template-columns:minmax(92px,.34fr) minmax(0,1fr);gap:7px;margin:0;padding:5px 0;border-top:1px solid rgba(255,255,255,.06);font-size:12px;line-height:1.35}
+.museum-facts strong{color:var(--muted)}
+.museum-facts span{overflow-wrap:anywhere}
+.museum-facts p:first-of-type{border-top:0}
 .mask-view-context{font-size:13px;color:var(--muted)}
 .mask-source{display:inline-block;margin:2px 0 8px;color:#8cdbd0;text-underline-offset:3px;font-size:13px;font-weight:700}
 .mask-rights{display:block;margin-bottom:14px;color:var(--muted);font-size:11px}
@@ -192,6 +198,16 @@ ol.steps{margin:0;padding-left:22px;display:grid;gap:8px}
 .tcard b{font:800 16px var(--display)}
 .tcard b em{font-style:normal;color:var(--accent);font-family:var(--body);font-weight:600;font-size:13px;margin-left:6px}
 .tcard p{margin:4px 0 0;font-size:14px}
+.tcard small{display:block;margin-top:8px;color:var(--muted);font-size:11px;line-height:1.4}
+.tcard small a{color:#8cdbd0;text-underline-offset:3px}
+.proverb-day{border-color:rgba(245,154,46,.45);background:linear-gradient(145deg,rgba(245,154,46,.11),rgba(255,255,255,.04))}
+.proverb-day>small:first-child{color:var(--accent);font-weight:800}
+.proverb-day>b{display:block;margin-top:8px;font:800 20px/1.2 var(--display)}
+.herb-row{display:grid;grid-template-columns:minmax(90px,1fr) minmax(100px,1fr);gap:4px 12px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.07)}
+.herb-row:last-child{border-bottom:0}
+.herb-row>span{color:var(--muted);text-align:right}
+.herb-row>small{grid-column:1/-1;color:var(--muted);font-size:11px}
+.recipe-video video{display:block;width:100%;max-height:360px;margin-top:10px;border-radius:10px;background:#0b1110}
 .cook-guide{padding:16px;border-color:rgba(245,154,46,.55);background:linear-gradient(145deg,rgba(245,154,46,.13),rgba(255,255,255,.045))}.cook-guide>small{display:block;color:var(--accent);font-weight:700;margin-bottom:6px}.cook-guide>b{display:block;font:800 19px/1.2 var(--display);margin-bottom:8px}.cook-guide .btn{margin-top:12px;min-height:46px}.cook-count{margin-top:12px!important;color:var(--muted);font-size:12px!important}.cook-list{display:flex;gap:6px;flex-wrap:wrap;margin:10px 0 18px}.cook-list .chip.have{border-color:rgba(90,190,130,.55);color:#9ce1b6}
 .dots{display:flex;gap:8px;margin:10px 0}
 .dot{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.12);transition:.08s}
