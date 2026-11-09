@@ -594,11 +594,11 @@ body.learn-open #joy,body.learn-open #act{display:none!important}
 #elder{position:absolute;inset:0;z-index:60;display:grid;place-items:center;padding:12px;background:radial-gradient(90% 80% at 50% 30%,rgba(58,42,85,.85),rgba(18,10,28,.95));overflow:hidden}
 #elder[hidden]{display:none}
 #elder .elcard{width:min(720px,100%);max-height:100%;display:flex;flex-direction:column;background:linear-gradient(180deg,#3b2a55,#241837);border:1px solid rgba(255,255,255,.16);border-radius:22px;box-shadow:0 24px 70px rgba(0,0,0,.6);overflow:hidden;animation:lin .28s ease-out}
-.elh{display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(90deg,rgba(47,106,90,.55),rgba(59,42,85,0));border-bottom:1px solid rgba(255,255,255,.12)}
+.elh{flex:none;display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(90deg,rgba(47,106,90,.55),rgba(59,42,85,0));border-bottom:1px solid rgba(255,255,255,.12)}
 .elav{width:54px;height:54px;border-radius:50%;overflow:hidden;flex:none;border:2px solid #f0e6d0;background:#3b2a55}.elav svg{width:100%;height:100%;display:block}
 .elt{flex:1;min-width:0}.elt small{color:#d9c9f0;display:block;font-size:13px}.elt h2{margin:0;font:800 22px var(--display)}
 .elh .lx{width:44px;height:44px;border-radius:12px;border:1px solid var(--line);background:rgba(255,255,255,.08);color:#fff;display:grid;place-items:center;flex:none}.elh .lx .li{width:22px;height:22px}
-.elnav{display:flex;gap:6px;padding:10px 12px;overflow-x:auto;scrollbar-width:thin;border-bottom:1px solid rgba(255,255,255,.08)}
+.elnav{flex:none;display:flex;gap:6px;padding:10px 12px;overflow-x:auto;scrollbar-width:thin;border-bottom:1px solid rgba(255,255,255,.08)}
 .elchip{display:flex;align-items:center;gap:6px;flex:none;min-height:44px;padding:6px 12px;border-radius:999px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#efe6ff;font:600 14px var(--body,inherit);cursor:pointer}
 .elchip .li{width:18px;height:18px}.elchip.seen{border-color:#2f9e8f;color:#bff0e6}.elchip.cur{background:var(--accent);border-color:var(--accent);color:#2a130c}
 .elbody{padding:16px;overflow:auto;flex:1;display:grid;gap:12px;align-content:start}
@@ -985,4 +985,62 @@ button:not(:disabled):active,.btn:active,.mbtn:active,.tile:active{transform:sca
   .amap .mkey{font-size:11px}.amap>.note{font-size:10.5px;line-height:1.25}
   /* messages : à gauche quand un dialogue est ouvert */
   body:has(#dialog:not([hidden])) #toast{left:calc(var(--gx) + 96px);transform:none;max-width:calc(100% - min(320px,42vw) - var(--gx) - 96px - var(--gr) - 14px)}
+}
+@media (orientation:landscape) and (max-height:480px){
+  /* accueil : on rend sa largeur à la carte à deux colonnes (la règle précédente la rognait) */
+  #welcome.home .card{max-width:none;width:min(860px,96vw);font-size:inherit}
+  .hm{gap:12px}.hm-hero .pitch{display:none}.hm-hero .hbanner{border-radius:16px}
+  .hm-stats b{font-size:16px}.hm-stats span{font-size:10px}.hm-stats li{padding:5px 2px}
+  .hm-act{padding:10px;gap:8px;border-radius:18px}.hm-main{gap:6px}
+  #welcome.home .hm-act .mbtn{padding:8px 12px;gap:10px;border-radius:14px}#welcome.home .hm-act .mbtn svg{width:22px;height:22px}
+  #welcome.home .hm-act .mbtn.big{min-height:52px}#welcome.home .hm-act .mbtn.big b{font-size:16px}#welcome.home .hm-act .mbtn.cont{min-height:44px}
+  .hm-tiles{gap:6px}.tile{min-height:54px;padding:6px 2px;gap:3px}.tile svg{width:20px;height:20px}.tile b{font-size:11px}
+  /* gardien de la mémoire : en-tête, onglets et corps resserrés */
+  #elder .elcard{width:min(680px,90vw)!important}
+  .elh{padding:6px 10px;gap:8px}.elav{width:34px;height:34px}.elt small{font-size:11px}.elt h2{font-size:15px}.elh .lx{width:34px;height:34px;border-radius:10px}
+  .elnav{padding:5px 8px;gap:5px}.elchip{min-height:32px;padding:3px 10px;font-size:12px}.elchip .li{width:15px;height:15px}
+  .elbody{padding:10px 12px;gap:8px}.elk{font-size:11px}.elbody h3{font-size:18px}.eltext{font-size:13.5px;padding:8px 10px;line-height:1.4}
+  .elfact{padding:8px 10px}.elfact b{font-size:15px}.elsay{padding:8px 10px}.elsay .spk2{width:40px;height:40px}.elstats b{font-size:17px}
+}
+.su{display:grid;gap:4px}
+@media (orientation:landscape) and (max-height:480px){
+  #welcome .card:has(.su){max-width:min(760px,94vw);width:min(760px,94vw)}
+  .su{grid-template-columns:1fr 1fr;gap:14px;align-items:start}
+  #welcome .card:has(.su) h2{margin-bottom:2px}#welcome .card:has(.su)>p.sub{margin-bottom:4px;font-size:12px}
+  #welcome .card:has(.su) .sh{margin:6px 0 4px}#welcome .card:has(.su) .trow{padding:6px 10px;min-height:0}
+}
+
+/* v0.21.1 : école (cartes d'étude, quiz) lisible en paysage bas : tout tient sans défiler jusqu'aux boutons */
+@media (orientation:landscape) and (max-height:480px){
+  #learn .lbody{padding:6px 12px 8px}
+  #learn .lbody.study{gap:6px}
+  #learn .prov{margin:0;padding:4px 8px;font-size:11px;line-height:1.25}
+  #learn .prov b{font-size:12px}
+  #learn .sdots i{width:7px;height:7px}
+  #learn .scard{padding:8px 12px;min-height:0;gap:4px;border-radius:14px}
+  #learn .scard.kid{min-height:0;border-radius:18px}
+  #learn .scard small{font-size:11px}
+  #learn .sbig{font-size:clamp(24px,6vw,32px)}
+  #learn .ssm{font-size:clamp(14px,3.4vw,17px)}
+  #learn .semo{font-size:clamp(36px,12vh,54px)}
+  #learn .scard.kid .sbig{font-size:clamp(26px,6vw,34px)}
+  #learn .spk2{width:34px;height:34px}
+  #learn .lrow{margin-top:4px;gap:6px}
+  #learn .lbody .sub{margin:0;font-size:11px}
+  #learn .kopt .semo{font-size:clamp(28px,9vh,40px)}
+}
+@media (orientation:landscape) and (max-height:480px){
+  #learn .lbody.study{grid-auto-rows:min-content;align-content:start}
+  #learn .scard{overflow:visible}
+}
+@media (orientation:landscape) and (max-height:340px){
+  #learn .lbody .sub,#learn .sdots{display:none}
+}
+
+/* v0.21.2 : audit paysage — accueil : bannière en haut ; fiche étroite ; panneau latéral */
+@media (orientation:landscape) and (max-height:480px){
+  #welcome.home .hm-hero{align-self:start;position:sticky;top:0}
+}
+@media (orientation:landscape) and (max-height:480px){
+  #panel.half{top:54px}
 }

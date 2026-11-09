@@ -19,3 +19,9 @@ Le musée est un volume plein (cercles de collision sans trou), les cailloux blo
 
 ## v0.20.2 — mobile en paysage
 Dialogues, carte (dessin à gauche, fiche à droite), discussion, panneaux, école, gardien, atelier et pause réduits sur écran paysage de moins de 480 px de haut. Vérifié en capture à 844×390 (2D). Non revérifié : autres tailles (667×375, 932×430), 3D en détail, tests e2e.
+
+## v0.21.0 — architecture par zone, langue et rendu au démarrage
+- **Musée par zone** (même emprise et même porte, donc mêmes collisions) : Ouest = terre crue sahélienne ; Nord = maison blanche à dômes et porte bleue ; Est = pierre de corail swahilie avec porte sculptée ; Centrale = grande case à toit de chaume sur plateforme de bois ; Australe = pierre sèche, rotonde de chaume et façade peinte. Ce sont des interprétations stylisées d’architectures régionales, pas des reconstitutions d’un bâtiment précis. L’intérieur de la salle change aussi de matières et de couleurs selon la zone.
+- **Premier lancement** : écran de choix de la langue du jeu (français, anglais, portugais) et du rendu (2D ou 3D). Le monde ne démarre qu’après ce choix. Les joueurs qui ont déjà une progression ne le voient pas ; langue et rendu restent modifiables dans Paramètres.
+- **Traduction** (js/i18n.js) : libellés d’interface connus (menus, boutons, HUD, personnage, carte, musée, début de partie) traduits par correspondance exacte. Les contes, recettes, vocabulaire, notices de masques, histoire des langues, textes de quêtes et une partie des réglages restent en français. Les traductions anglaises et portugaises de l’interface n’ont pas été relues par un locuteur natif.
+- Tests : tests/i18n.test.cjs, tests/setup.mjs (Playwright, premier lancement 2D et 3D). Mobile paysage : accueil et gardien de la mémoire compactés.

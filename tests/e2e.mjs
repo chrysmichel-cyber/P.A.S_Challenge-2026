@@ -11,7 +11,7 @@ let n=0,fail=0;const errors=[];
 const ok=(c,m)=>{n++;if(c)console.log('  ok   '+m);else{fail++;console.log('  FAIL '+m)}};
 async function open(opts={}){
  const ctx=await browser.newContext(Object.assign({viewport:{width:1000,height:640}},opts.ctx||{}));
- if(opts.mode!==null&&!(opts.init&&opts.mode===undefined))await ctx.addInitScript(m=>{if(!localStorage.getItem('lca-v2')||!JSON.parse(localStorage.getItem('lca-v2')).settings||!JSON.parse(localStorage.getItem('lca-v2')).settings.__set){const s=JSON.parse(localStorage.getItem('lca-v2')||'{}');s.settings=Object.assign({sound:1,shadows:0,quality:0,__set:1},s.settings,{mode:m,modeV:2});localStorage.setItem('lca-v2',JSON.stringify(s))}},opts.mode||'2d');
+ if(opts.mode!==null&&!(opts.init&&opts.mode===undefined))await ctx.addInitScript(m=>{if(!localStorage.getItem('lca-v2')||!JSON.parse(localStorage.getItem('lca-v2')).settings||!JSON.parse(localStorage.getItem('lca-v2')).settings.__set){const s=JSON.parse(localStorage.getItem('lca-v2')||'{}');s.settings=Object.assign({sound:1,shadows:0,quality:0,__set:1},s.settings,{mode:m,modeV:2,setupDone:1});localStorage.setItem('lca-v2',JSON.stringify(s))}},opts.mode||'2d');
  if(!opts.gate)await ctx.addInitScript(()=>{window.LCA_NO_FSGATE=true});
  if(opts.init)await ctx.addInitScript(opts.init);
  const pg=await ctx.newPage();pg.setDefaultTimeout(15000);

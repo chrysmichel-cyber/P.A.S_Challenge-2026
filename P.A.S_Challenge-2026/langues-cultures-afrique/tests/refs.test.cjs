@@ -1,0 +1,17 @@
+'use strict';
+const test=require('node:test'),assert=require('node:assert/strict'),{root}=require('./helpers.cjs');
+const RF=require(root+'/js/speech/refs.js'),O=require(root+'/js/oral/oral.js');
+const mk=()=>RF.create({adapter:O.memAdapter(),langs:{wolof:1},now:(()=>{let t=1e12;return()=>t+=1000})()});
+const base={lang:'wolof',form:'Jërëjëf',fr:'Merci',speaker:'Awa',native:true,consent:true};
+test('refus sans accord, sans nom, non natif, sans audio, langue inconnue',async()=>{const s=mk(),a={blob:{size:100},type:'audio/webm'};
+ assert.deepEqual((await s.add(Object.assign({},base,{consent:false}),a)).errors,['consent']);assert.deepEqual((await s.add(Object.assign({},base,{speaker:''}),a)).errors,['speaker']);
+ assert.deepEqual((await s.add(Object.assign({},base,{native:false}),a)).errors,['native']);assert.deepEqual((await s.add(base,null)).errors,['audio']);assert.deepEqual((await s.add(Object.assign({},base,{lang:'zz'}),a)).errors,['lang']);
+ assert.deepEqual((await s.add(base,{blob:{size:3e6},type:'a'})).errors,['toobig']);});
+test('ajout, recherche par mot, validation par deux autres locuteurs, jamais par soi-même',async()=>{const s=mk(),r=await s.add(base,{blob:{size:100},type:'audio/webm'});assert.ok(r.ok);
+ assert.equal((await s.forWord('wolof','jërëjëf','merci')).length,1);assert.equal((await s.forWord('wolof','x','y')).length,0);
+ assert.equal((await s.vote(r.meta.id,{name:'Awa',native:true},'ok')).error,'self');assert.equal((await s.vote(r.meta.id,{name:'B',native:false},'ok')).error,'native');
+ assert.equal((await s.vote(r.meta.id,{name:'Moussa',native:true},'ok')).status.id,'propose');assert.equal((await s.vote(r.meta.id,{name:'Fatou',native:true},'ok')).status.id,'valide');
+ assert.equal((await s.vote(r.meta.id,{name:'Ibou',native:true},'bad')).status.id,'conteste');});
+test('meilleure voix : validée > proposée, jamais une voix contestée',()=>{const m=(id,v)=>RF.sanitize(Object.assign({},base,{id,created:id.length,votes:v}));const ok={a:{d:'ok',native:true},b:{d:'ok',native:true}};
+ const L=[m('x',{}),m('yy',ok),m('zzz',{c:{d:'bad',native:true}})];assert.equal(RF.best(L).id,'yy');assert.equal(RF.best([m('z',{c:{d:'bad',native:true}})]),null)});
+test('suppression',async()=>{const s=mk(),r=await s.add(base,{blob:{size:1},type:'a'});assert.ok(await s.remove(r.meta.id));assert.equal(await s.get(r.meta.id),null)});

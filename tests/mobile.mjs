@@ -8,7 +8,7 @@ let n=0,fail=0;const ok=(c,m)=>{n++;if(c)console.log('  ok  ',m);else{fail++;con
 const ctx=await b.newContext({viewport:{width:780,height:360},hasTouch:true,isMobile:true,deviceScaleFactor:2});
 await ctx.addInitScript(()=>{try{if(!localStorage.getItem('lca-v2'))localStorage.setItem('lca-v2',JSON.stringify({v:5,lang:'wolof',settings:{mode:'3d',modeV:2,sound:0}}))}catch(e){}});
 const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(e.message));await p.route('**/fonts.g*/**',r=>r.abort());
-await p.goto('http://127.0.0.1:'+srv.address().port+'/index.html');await p.waitForTimeout(5000);
+await p.goto('http://127.0.0.1:'+srv.address().port+'/index.html');await p.waitForTimeout(5000);await p.evaluate(()=>{const b=document.querySelector('[data-setup=go]');if(b)b.click()});await p.waitForTimeout(3500);
 ok(await p.evaluate(()=>!document.getElementById('fsGate').hidden),'invite plein écran affichée sur appareil tactile');
 await p.screenshot({path:out+'/gate.png'});
 await p.tap('#fsGo');await p.waitForTimeout(800);

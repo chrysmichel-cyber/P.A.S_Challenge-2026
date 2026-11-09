@@ -191,7 +191,16 @@
     return { group, width, height, dispose() { geo.dispose(); backGeo.dispose(); frontMaterial.dispose(); backMaterial.dispose(); color.dispose(); alpha.dispose(); } };
   }
 
-  function createGallery(canvas, collection, onSelect) {
+  /* Ambiance de la salle selon la grande zone : mêmes volumes, matières et couleurs propres à l’architecture du musée du village. */
+  const ROOM_STYLES = {
+    ouest: { floor: 0x8e704c, wall: 0x765037, side: 0x6a4934, ceil: 0x493623, base: 0x422e20, beam: 0x4d3422 },
+    nord: { floor: 0xd8cfbb, wall: 0xf0eadc, side: 0xe6dec9, ceil: 0xcfc3aa, base: 0x2d6fa8, beam: 0x2d6fa8 },
+    est: { floor: 0xb9ab8a, wall: 0xe5d8bc, side: 0xd8c9a6, ceil: 0x4a2c18, base: 0x4a2c18, beam: 0x5a3820 },
+    centrale: { floor: 0x6a4528, wall: 0xa8683c, side: 0x8c5430, ceil: 0x967734, base: 0x3e2616, beam: 0x5a3a22 },
+    australe: { floor: 0x7d725e, wall: 0x8a7d6b, side: 0x7a6e5d, ceil: 0x5a4a38, base: 0x5a5042, beam: 0x4a3a2a }
+  };
+  function createGallery(canvas, collection, onSelect, region) {
+    const RS = ROOM_STYLES[region] || ROOM_STYLES.ouest;
     const THREE = window.THREE;
     let renderer, raf = 0, observer = null, closed = false, selectedId = null, downPoint = null;
     const resources = [], models = new Map(), pickables = [], pointers = new Map(), raycaster = new THREE.Raycaster(), mouse = new THREE.Vector2();
@@ -207,14 +216,14 @@
     scene.add(new THREE.HemisphereLight(0xffe4ba, 0x201b15, .8));
     const warm = new THREE.PointLight(0xffbd73, 1.0, 26); warm.position.set(0, 5, 1); scene.add(warm);
     const fill = new THREE.DirectionalLight(0xd2e8d1, .55); fill.position.set(-5, 7, 5); scene.add(fill);
-    const floor = addBox(18.5, .28, 15.2, 0x8e704c, 0, -.14, -.8, .9); floor.receiveShadow = true;
-    addBox(18.5, 7.2, .32, 0x765037, 0, 3.6, -7.6);
-    addBox(.32, 7.2, 15.2, 0x6a4934, -9.1, 3.6, -.8); addBox(.32, 7.2, 15.2, 0x6a4934, 9.1, 3.6, -.8);
-    addBox(18.5, .24, 15.2, 0x493623, 0, 7.2, -.8);
-    addBox(18.2, .34, .24, 0x422e20, 0, .28, -7.35);
+    const floor = addBox(18.5, .28, 15.2, RS.floor, 0, -.14, -.8, .9); floor.receiveShadow = true;
+    addBox(18.5, 7.2, .32, RS.wall, 0, 3.6, -7.6);
+    addBox(.32, 7.2, 15.2, RS.side, -9.1, 3.6, -.8); addBox(.32, 7.2, 15.2, RS.side, 9.1, 3.6, -.8);
+    addBox(18.5, .24, 15.2, RS.ceil, 0, 7.2, -.8);
+    addBox(18.2, .34, .24, RS.base, 0, .28, -7.35);
     const tile = new THREE.GridHelper(18, 18, 0xd3ad76, 0x5f4933); tile.position.set(0, .012, -.8); tile.material.transparent = true; tile.material.opacity = .22; room.add(tile); resources.push(tile.geometry, tile.material);
     /* Des poutres au plafond donnent la lecture d'une salle visitable ; aucun montant ne passe devant la caméra. */
-    for (let x = -8; x <= 8; x += 2) addBox(.15, .16, 14.4, 0x4d3422, x, 6.88, -.7);
+    for (let x = -8; x <= 8; x += 2) addBox(.15, .16, 14.4, RS.beam, x, 6.88, -.7);
     const positions = [-7, -4.2, -1.4, 1.4, 4.2, 7], podiums = new Map(), frameMaterials = new Map(), stagePositions = new Map();
     const ringGeo = new THREE.TorusGeometry(1.12, .055, 8, 48), ringMat = new THREE.MeshStandardMaterial({ color: 0xf2bd5c, emissive: 0xa45a16, emissiveIntensity: .42, roughness: .45 });
     resources.push(ringGeo, ringMat);

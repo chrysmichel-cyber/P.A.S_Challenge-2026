@@ -1,6 +1,6 @@
 {
   "name": "nzassa",
-  "version": "0.20.2",
+  "version": "0.21.2",
   "private": true,
   "description": "Jeu 2D/3D éducatif : explorer un village, apprendre des langues africaines avec leçons, quiz, XP et badges. Contenus en brouillon, à valider.",
   "scripts": {

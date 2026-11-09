@@ -1,0 +1,33 @@
+import http from 'node:http';import fs from 'node:fs';import path from 'node:path';import {createRequire} from 'node:module';
+const root=path.resolve(path.dirname(new URL(import.meta.url).pathname),'..');const pw=createRequire(import.meta.url)('playwright');
+const MIME={'.html':'text/html','.js':'text/javascript','.css':'text/css','.png':'image/png','.jpg':'image/jpeg','.webmanifest':'application/json'};
+const srv=http.createServer((q,r)=>{let f=path.join(root,decodeURIComponent(q.url.split('?')[0]));if(f.endsWith('/'))f+='index.html';fs.readFile(f,(e,b)=>{if(e){r.writeHead(404);r.end();return}r.writeHead(200,{'content-type':MIME[path.extname(f)]||'x'});r.end(b)})});
+await new Promise(r=>srv.listen(0,'127.0.0.1',r));
+const b=await pw.chromium.launch({args:['--use-gl=swiftshader','--enable-unsafe-swiftshader','--ignore-gpu-blocklist']});
+/* Premier lancement : choix de la langue (fr/en/pt) et du rendu (2D/3D) avant que le monde démarre. */
+let bad=0;const ok=(c,m)=>{console.log((c?'OK  ':'KO  ')+m);if(!c)bad++};
+const ctx=await b.newContext({viewport:{width:1000,height:560}});await ctx.addInitScript(()=>{window.LCA_NO_FSGATE=true});
+const p=await ctx.newPage();const errs=[];p.on('pageerror',e=>errs.push(String(e)));await p.route('**/fonts.g*/**',r=>r.abort());
+const PAGE='http://127.0.0.1:'+srv.address().port+'/index.html';
+await p.goto(PAGE);await p.waitForTimeout(1500);
+ok(await p.evaluate(()=>!!document.querySelector('[data-setup=go]')),'l’écran de choix s’affiche au premier lancement');
+ok(await p.evaluate(()=>!document.body.classList.contains('m2d')&&!document.body.classList.contains('m3d')),'le monde ne démarre pas avant le choix');
+await p.evaluate(()=>document.querySelector('[data-ui=pt]').click());await p.waitForTimeout(400);
+ok((await p.evaluate(()=>document.getElementById('welcomeCard').innerText)).includes('Bem-vindo'),'portugais : l’écran se traduit');
+await p.evaluate(()=>document.querySelector('[data-ui=en]').click());await p.waitForTimeout(400);
+await p.evaluate(()=>document.querySelector('[data-rmode="2d"]').click());await p.evaluate(()=>document.querySelector('[data-setup=go]').click());await p.waitForTimeout(3500);
+ok(await p.evaluate(()=>document.body.classList.contains('m2d')),'rendu 2D choisi : le monde 2D démarre');
+const s=await p.evaluate(()=>JSON.parse(localStorage.getItem('lca-v2')).settings);
+ok(s.uiLang==='en'&&s.mode==='2d'&&s.setupDone===1,'choix enregistrés : '+JSON.stringify({u:s.uiLang,m:s.mode,d:s.setupDone}));
+ok((await p.evaluate(()=>document.getElementById('dock').textContent)).includes('Quests'),'interface en anglais dans le jeu');
+await p.reload();await p.waitForTimeout(2500);
+ok(await p.evaluate(()=>!document.querySelector('[data-setup=go]')),'au lancement suivant, pas de nouvel écran de choix');
+ok(await p.evaluate(()=>document.documentElement.lang)==='en','la langue choisie est retrouvée');
+ok(errs.length===0,'aucune erreur de page '+errs.slice(0,2));
+await ctx.close();
+/* 3D */
+const c3=await b.newContext({viewport:{width:1000,height:560}});await c3.addInitScript(()=>{window.LCA_NO_FSGATE=true});
+const q=await c3.newPage();await q.route('**/fonts.g*/**',r=>r.abort());await q.goto(PAGE);await q.waitForTimeout(1500);
+await q.evaluate(()=>document.querySelector('[data-rmode="3d"]').click());await q.evaluate(()=>document.querySelector('[data-setup=go]').click());await q.waitForTimeout(5000);
+ok(await q.evaluate(()=>document.body.classList.contains('m3d')),'rendu 3D choisi : le monde 3D démarre');
+await b.close();srv.close();process.exit(bad?1:0);
